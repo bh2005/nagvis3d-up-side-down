@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NagVis 3D · v3</title>
+
+  <script type="importmap">{
+    "imports": {
+      "three":         "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+    }
+  }</script>
+
+  <link rel="stylesheet" href="style.css">
+  <!-- Leaflet für OSM-Übersichtskarte -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+<div id="cockpit-badge">⚡ COCKPIT</div>
+
+<!-- HUD -->
+<div class="hud">
+  <div id="header" class="panel">
+    <div class="dot"></div>
+    <div class="title">NagVis <span>3D</span></div>
+    <div class="sub" id="view-sub">v3 · POC</div>
+
+    <!-- 2D mode badge -->
+    <div id="view-badge">
+      <span>2D ·</span>
+      <span class="vb-floor" id="vb-floor-name">–</span>
+      <button class="btn btn-back3d" style="padding:2px 8px;font-size:10px" onclick="app.exit2D()">← 3D</button>
+    </div>
+
+    <!-- Search -->
+    <div id="search-wrap">
+      <input id="search-input" type="text" placeholder="Host suchen… (Ctrl+F)"
+             autocomplete="off" spellcheck="false"
+             oninput="app.search(this.value)"
+             onkeydown="if(event.key==='Escape'){app.clearSearch();this.value='';}">
+      <span id="search-count"></span>
+    </div>
+
+    <div id="hdr-right">
+      <!-- Cockpit mode -->
+      <button class="btn" id="btn-cockpit" onclick="app.toggleCockpit()" title="Cockpit-Modus (nur Probleme)">⚡</button>
+
+      <!-- Problem list -->
+      <button class="btn" id="btn-problems" onclick="problemList.toggle()">⚑ 0</button>
+
+      <!-- Map overview -->
+      <button class="btn" id="btn-map" onclick="mapOverlay.toggle()" title="OSM-Übersichtskarte (M)">🗺</button>
+      <!-- Info page -->
+      <a href="info.html" class="btn" title="Datenreferenz &amp; Doku" style="text-decoration:none">?</a>
+
+      <!-- Model selector -->
+      <button class="btn" id="btn-model-selector" onclick="modelDialog.open()">
+        <span id="btn-model-name">–</span> <span style="opacity:.45;font-size:9px">▾</span>
+      </button>
+
+      <div id="legend">
+        <div class="leg"><div class="leg-dot" style="background:var(--ok);  box-shadow:0 0 5px var(--ok)"></div>OK</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--warn);box-shadow:0 0 5px var(--warn)"></div>WARN</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--crit);box-shadow:0 0 5px var(--crit)"></div>CRIT</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--down);box-shadow:0 0 5px var(--down)"></div>DOWN</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--unkn)"></div>UNKN</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bottom-bar">
+    <div id="event-log" class="panel">
+      <div id="log-title">SYSTEM LOG</div>
+      <div id="log-entries"></div>
+    </div>
+    <div id="controls" class="panel">
+      <label>FLOW SPEED</label>
+      <input type="range" id="flow-speed" min="0" max="100" value="40">
+      <label>ORBIT RADIUS <span id="orbit-radius-val">90</span></label>
+      <input type="range" id="orbit-radius" min="30" max="250" value="90">
+      <div class="btn-row">
+        <button class="btn active" id="btn-orbit" onclick="app.toggleOrbit()">Auto-Orbit</button>
+        <button class="btn"                        onclick="app.resetCam()">Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Floor nav (right) -->
+<div id="floor-panel"></div>
+
+<!-- 2D panel: background + opacity (left) -->
+<div id="panel-2d">
+  <div class="panel" style="display:flex;flex-direction:column;gap:7px">
+    <label>GRUNDRISS</label>
+    <button class="btn" onclick="document.getElementById('bg-file-input').click()">📁 Bild laden</button>
+    <div class="bg-img-name" id="bg-img-name">— kein Bild —</div>
+    <label>BILD-DECKKRAFT</label>
+    <input type="range" id="bg-opacity" min="0" max="100" value="60"
+           oninput="app.setBgOpacity(this.value / 100)">
+    <label>EBENE-DECKKRAFT</label>
+    <input type="range" id="floor-opacity" min="0" max="100" value="30"
+           oninput="app.setFloorOpacity(this.value / 100)">
+  </div>
+</div>
+
+<!-- Zoom controls -->
+<div id="zoom-ctrl">
+  <button class="btn btn-zoom" onclick="app.zoom(+1)">+</button>
+  <button class="btn btn-zoom" onclick="app.zoom(-1)">−</button>
+</div>
+
+<!-- Controls hint -->
+<div id="ctrl-hint">🖱 Drehen · Rechte Taste: Schieben · Rad: Zoom</div>
+
+<!-- Node Inspector -->
+<div id="inspector">
+  <div id="ins-hdr">
+    <span id="ins-close" onclick="app.closeInspector()">✕</span>
+    <span id="ins-badge" class="s-badge s-ok">OK</span>
+    <h2 id="ins-name">–</h2>
+    <code id="ins-id">–</code>
+  </div>
+  <div id="ins-body"></div>
+  <div id="ins-foot">
+    <button class="btn" style="flex:1" onclick="app.focusActive()">Focus Camera</button>
+  </div>
+</div>
+
+<!-- ═══════════ PROBLEM PANEL ═══════════ -->
+<div id="problem-panel">
+  <div id="prob-hdr">
+    <span class="dlg-title">Problem <span>Hosts</span></span>
+    <span class="dlg-close" id="prob-close">✕</span>
+  </div>
+  <div id="prob-list"></div>
+</div>
+
+<!-- ═══════════ MAP OVERLAY ═══════════ -->
+<div id="map-overlay">
+  <div id="map-overlay-inner">
+    <div id="map-overlay-hdr">
+      <span class="dlg-title">Standort<span>karte</span></span>
+      <span class="dlg-close" onclick="mapOverlay.close()">✕</span>
+    </div>
+    <div id="map-toolbar">
+      <select id="map-site-select"></select>
+      <button id="map-load-btn" class="btn btn-primary" disabled>Modell laden</button>
+    </div>
+    <div id="leaflet-container"></div>
+  </div>
+</div>
+
+<!-- ═══════════ MODEL DIALOG ═══════════ -->
+<div id="model-dialog">
+  <div id="model-dialog-inner">
+
+    <div id="model-dialog-hdr">
+      <span class="dlg-title">Modell <span>wechseln</span></span>
+      <span class="dlg-close" onclick="modelDialog.close()">✕</span>
+    </div>
+
+    <!-- Model list (populated by JS) -->
+    <div id="model-list"></div>
+
+    <div id="model-dialog-foot">
+      <button class="btn" id="btn-new-model">+ Neues Modell</button>
+    </div>
+
+    <!-- ── New model form ─────────────────────────── -->
+    <div id="model-new-section" style="display:none">
+      <div class="dlg-divider"></div>
+      <div class="dlg-section-title">Neues Modell anlegen</div>
+
+      <form id="model-form">
+
+        <div class="form-row">
+          <label class="form-label">Name</label>
+          <input class="form-input" type="text" name="name" required placeholder="z.B. Schachtanlage Nord">
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Typ</label>
+          <div class="radio-group">
+            <label class="radio-opt">
+              <input type="radio" name="type" value="building" checked>
+              <span>🏢 Hochhaus</span>
+            </label>
+            <label class="radio-opt">
+              <input type="radio" name="type" value="mine">
+              <span>⛏ Grube / Schacht</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-col">
+            <label class="form-label">Etagen / Sohlen</label>
+            <input class="form-input" type="number" name="floorCount" value="4" min="2" max="20">
+          </div>
+          <div class="form-col">
+            <label class="form-label">Höhe pro Etage (m)</label>
+            <input class="form-input" type="number" name="floorHeight" value="3" min="1" max="1000" step="0.5">
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-col">
+            <label class="form-label">Breite (m)</label>
+            <input class="form-input" type="number" name="width" value="110" min="10">
+          </div>
+          <div class="form-col">
+            <label class="form-label">Länge (m)</label>
+            <input class="form-input" type="number" name="length" value="110" min="10">
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-col">
+            <label class="form-label">Breitengrad (lat)</label>
+            <input class="form-input" type="number" name="lat" value="51.5062" step="0.0001">
+          </div>
+          <div class="form-col">
+            <label class="form-label">Längengrad (lon)</label>
+            <input class="form-input" type="number" name="lon" value="9.3327" step="0.0001">
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn" id="btn-cancel-new">Abbrechen</button>
+          <button type="submit" class="btn btn-primary">Anlegen</button>
+        </div>
+
+      </form>
+    </div><!-- /model-new-section -->
+
+  </div><!-- /model-dialog-inner -->
+</div><!-- /model-dialog -->
+
+<!-- hidden file input for bg image -->
+<input type="file" id="bg-file-input" accept="image/*" style="display:none"
+       onchange="app._onBgFileSelected(this.files[0]); this.value=''">
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

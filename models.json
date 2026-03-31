@@ -1,0 +1,55 @@
+[
+  {
+    "id": "dc1",
+    "name": "Datacenter DC1",
+    "type": "datacenter",
+    "width": 20, "length": 10,
+    "rows": 3, "racksPerRow": 5, "rackUnits": 42,
+    "dataUrl": "data/dc1.json"
+  },
+  {
+    "id": "building1",
+    "name": "Building 1",
+    "type": "building",
+    "floorCount": 4, "width": 110, "length": 110, "floorHeight": 3,
+    "lat": 51.5062, "lon": 9.3327,
+    "dataUrl": "data/building.json"
+  },
+  {
+    "id": "building2",
+    "name": "Building 2",
+    "type": "building",
+    "floorCount": 6, "width": 80, "length": 60, "floorHeight": 4,
+    "lat": 51.5062, "lon": 9.3327,
+    "dataUrl": "data/building.json"
+  },
+  {
+    "id": "grube1",
+    "name": "Grube 1",
+    "type": "mine",
+    "floorHeight": 300,
+    "lat": 51.5062, "lon": 9.3327,
+    "floors": [
+      { "label": "ÜBERTAGE", "sub": "Schachtanlage" },
+      { "label": "SOHLE 1",  "sub": "−300 m"        },
+      { "label": "SOHLE 2",  "sub": "−600 m"        },
+      { "label": "SOHLE 3",  "sub": "−900 m"        }
+    ],
+    "dataUrl": "data/grube1.json"
+  },
+  {
+    "id": "grube2",
+    "name": "Grube 2",
+    "type": "mine",
+    "floorHeight": 300,
+    "lat": 51.5400, "lon": 9.3100,
+    "floors": [
+      { "label": "ÜBERTAGE", "sub": "Schachtanlage" },
+      { "label": "SOHLE 1",  "sub": "−300 m"        },
+      { "label": "SOHLE 2",  "sub": "−600 m"        },
+      { "label": "SOHLE 3",  "sub": "−900 m"        },
+      { "label": "SOHLE 4",  "sub": "−1.200 m"      }
+    ],
+    "dataUrl": "data/grube2.json"
+  }
+]
