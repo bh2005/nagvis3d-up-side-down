@@ -1,0 +1,57 @@
+{
+  "nodes": [
+    { "id": "core-sw-ot",  "label": "CORE-SW-ÜBERTAGE", "type": "switch", "status": "ok",
+      "x":  0, "y": 69, "z":  0,
+      "lat": 51.5400, "lon": 9.3100, "floor": "ÜBERTAGE" },
+
+    { "id": "core-sw-s1",  "label": "CORE-SW-SOHLE1",   "type": "switch", "status": "ok",
+      "x":  0, "y": 34, "z":  0,
+      "lat": 51.5390, "lon": 9.3120, "floor": "SOHLE 1" },
+    { "id": "host-s1-01",  "label": "host-s1-01",        "type": "host",   "status": "ok",
+      "x": -28, "y": 34, "z": -15,
+      "lat": 51.5150, "lon": 9.2750, "floor": "SOHLE 1" },
+    { "id": "host-s1-02",  "label": "host-s1-02",        "type": "host",   "status": "warning",
+      "x":  28, "y": 34, "z": -15,
+      "lat": 51.5600, "lon": 9.3500, "floor": "SOHLE 1" },
+
+    { "id": "core-sw-s2",  "label": "CORE-SW-SOHLE2",   "type": "switch", "status": "ok",
+      "x":  0, "y":  0, "z":  0,
+      "lat": 51.5400, "lon": 9.3100, "floor": "SOHLE 2" },
+    { "id": "host-s2-01",  "label": "host-s2-01",        "type": "host",   "status": "ok",
+      "x": -30, "y":  0, "z": -20,
+      "lat": 51.5100, "lon": 9.2700, "floor": "SOHLE 2" },
+    { "id": "host-s2-02",  "label": "host-s2-02",        "type": "host",   "status": "ok",
+      "x":  30, "y":  0, "z": -20,
+      "lat": 51.5650, "lon": 9.3500, "floor": "SOHLE 2" },
+
+    { "id": "core-sw-s3",  "label": "CORE-SW-SOHLE3",   "type": "switch", "status": "warning",
+      "x":  0, "y": -34, "z":  0,
+      "lat": 51.5400, "lon": 9.3100, "floor": "SOHLE 3" },
+    { "id": "host-s3-01",  "label": "host-s3-01",        "type": "host",   "status": "ok",
+      "x": -25, "y": -34, "z": 20,
+      "lat": 51.5200, "lon": 9.2900, "floor": "SOHLE 3" },
+
+    { "id": "core-sw-s4",  "label": "CORE-SW-SOHLE4",   "type": "switch", "status": "ok",
+      "x":  0, "y": -69, "z":  0,
+      "lat": 51.5400, "lon": 9.3100, "floor": "SOHLE 4" },
+    { "id": "host-s4-01",  "label": "host-s4-01",        "type": "host",   "status": "critical",
+      "x":  22, "y": -69, "z": 18,
+      "lat": 51.5550, "lon": 9.3350, "floor": "SOHLE 4" }
+  ],
+  "links": [
+    { "source": "core-sw-ot", "target": "core-sw-s1", "status": "ok"      },
+    { "source": "core-sw-s1", "target": "core-sw-s2", "status": "ok"      },
+    { "source": "core-sw-s2", "target": "core-sw-s3", "status": "warning" },
+    { "source": "core-sw-s3", "target": "core-sw-s4", "status": "ok"      },
+
+    { "source": "core-sw-s1", "target": "host-s1-01", "status": "ok"      },
+    { "source": "core-sw-s1", "target": "host-s1-02", "status": "warning" },
+
+    { "source": "core-sw-s2", "target": "host-s2-01", "status": "ok"      },
+    { "source": "core-sw-s2", "target": "host-s2-02", "status": "ok"      },
+
+    { "source": "core-sw-s3", "target": "host-s3-01", "status": "ok"      },
+
+    { "source": "core-sw-s4", "target": "host-s4-01", "status": "critical"}
+  ]
+}

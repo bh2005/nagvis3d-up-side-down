@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NagVis 3D · Datenreferenz</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0d1117;
+      --bg2:     #161b22;
+      --bg3:     #21262d;
+      --border:  #30363d;
+      --text:    #e6edf3;
+      --muted:   #8b949e;
+      --ok:      #27ae60;
+      --warn:    #e67e22;
+      --crit:    #e74c3c;
+      --down:    #c0392b;
+      --unkn:    #7f8c8d;
+      --accent:  #13b0f5;
+      --accent2: #7ee787;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 24px;
+      padding: 0 32px; height: 52px;
+    }
+    .nav-brand { font-size: 15px; font-weight: 700; color: var(--accent); letter-spacing: .04em; }
+    .nav-brand span { color: var(--muted); font-weight: 400; }
+    nav a { color: var(--muted); text-decoration: none; font-size: 13px; transition: color .15s; }
+    nav a:hover { color: var(--text); }
+    .nav-back {
+      margin-left: auto;
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); padding: 4px 14px; border-radius: 6px;
+      text-decoration: none; font-size: 12px;
+    }
+    .nav-back:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Layout ── */
+    .page { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+    .lead { color: var(--muted); margin-bottom: 48px; font-size: 14px; }
+
+    h2 {
+      font-size: 17px; font-weight: 600; color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px; margin: 48px 0 20px;
+      letter-spacing: .03em;
+    }
+    h3 { font-size: 14px; font-weight: 600; color: var(--accent2); margin: 28px 0 10px; }
+    p  { color: var(--muted); margin-bottom: 12px; }
+    p strong { color: var(--text); }
+
+    /* ── Field table ── */
+    .field-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+    .field-table th {
+      text-align: left; font-size: 11px; font-weight: 600;
+      color: var(--muted); letter-spacing: .07em; text-transform: uppercase;
+      padding: 8px 12px; background: var(--bg2);
+      border: 1px solid var(--border);
+    }
+    .field-table td {
+      padding: 9px 12px; border: 1px solid var(--border);
+      vertical-align: top; font-size: 13px;
+    }
+    .field-table tr:nth-child(even) td { background: var(--bg2); }
+    .field-table tr:hover td { background: var(--bg3); }
+
+    code {
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      background: var(--bg3); border: 1px solid var(--border);
+      padding: 1px 6px; border-radius: 4px; font-size: 12px;
+      color: var(--accent2);
+    }
+    .req  { color: var(--crit);  font-size: 11px; font-weight: 700; }
+    .opt  { color: var(--muted); font-size: 11px; }
+    .cond { color: var(--warn);  font-size: 11px; font-weight: 600; }
+
+    /* ── Type badges ── */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-size: 11px; font-weight: 600; letter-spacing: .04em;
+    }
+    .b-ok   { background: #1a3d2b; color: var(--ok);   border: 1px solid #27ae6055; }
+    .b-warn { background: #3d2a10; color: var(--warn); border: 1px solid #e67e2255; }
+    .b-crit { background: #3d1414; color: var(--crit); border: 1px solid #e74c3c55; }
+    .b-down { background: #2e1010; color: var(--down); border: 1px solid #c0392b55; }
+    .b-unkn { background: #252b2b; color: var(--unkn); border: 1px solid #7f8c8d55; }
+    .b-mine { background: #1a2a3a; color: #5dade2;     border: 1px solid #5dade255; }
+    .b-bld  { background: #2a1f3a; color: #a569bd;     border: 1px solid #a569bd55; }
+    .b-type { background: var(--bg3); color: var(--accent); border: 1px solid var(--border); }
+
+    /* ── Code block ── */
+    pre {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 20px; overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 12.5px; line-height: 1.7; margin-bottom: 24px;
+    }
+    pre .c  { color: var(--muted); }
+    pre .k  { color: #ff7b72; }
+    pre .s  { color: #a5d6ff; }
+    pre .n  { color: var(--accent2); }
+    pre .v  { color: #ffa657; }
+
+    /* ── Info / note boxes ── */
+    .note {
+      background: #132030; border: 1px solid #1c4a72;
+      border-left: 3px solid var(--accent);
+      border-radius: 6px; padding: 12px 16px; margin-bottom: 20px;
+      color: #8fc7e8; font-size: 13px;
+    }
+    .warn-box {
+      background: #2b1f0a; border: 1px solid #6b4a10;
+      border-left: 3px solid var(--warn);
+      border-radius: 6px; padding: 12px 16px; margin-bottom: 20px;
+      color: #d4a76a; font-size: 13px;
+    }
+
+    /* ── Topology diagram ── */
+    .topo {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 20px 24px; margin-bottom: 24px;
+      font-family: monospace; font-size: 13px; line-height: 1.9;
+      color: var(--muted);
+    }
+    .topo .hl  { color: var(--text); }
+    .topo .ok  { color: var(--ok); }
+    .topo .tun { color: var(--accent); }
+    .topo .ln  { color: #555; }
+
+    /* ── Node type cards ── */
+    .type-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 28px; }
+    .type-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px;
+    }
+    .type-card h4 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .type-card p  { font-size: 12px; margin: 0; }
+    .type-card.t-switch { border-top: 3px solid #5dade2; }
+    .type-card.t-host   { border-top: 3px solid var(--accent2); }
+    .type-card.t-ap     { border-top: 3px solid var(--warn); }
+
+    /* ── Section anchor ── */
+    section { scroll-margin-top: 64px; }
+
+    /* ── TOC ── */
+    .toc {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 20px 24px; margin-bottom: 40px;
+      display: inline-block; min-width: 280px;
+    }
+    .toc-title { font-size: 11px; font-weight: 700; letter-spacing: .08em;
+                 text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+    .toc ol { padding-left: 18px; }
+    .toc li { margin: 4px 0; }
+    .toc a  { color: var(--muted); text-decoration: none; font-size: 13px; }
+    .toc a:hover { color: var(--accent); }
+
+    @media (max-width: 600px) {
+      .type-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">NagVis <span>3D</span> · v3</div>
+  <a href="#nodes">Nodes</a>
+  <a href="#links">Links</a>
+  <a href="#models">Modelle</a>
+  <a href="#data">Datendateien</a>
+  <a href="#examples">Beispiele</a>
+  <a href="#ws">WebSocket</a>
+  <a href="#shortcuts">Shortcuts</a>
+  <a href="index.html" class="nav-back">← Karte öffnen</a>
+</nav>
+
+<div class="page">
+
+  <h1>Datenreferenz &amp; Node-Spezifikation</h1>
+  <p class="lead">
+    Beschreibt alle Felder, die ein Node oder Link in einer externen JSON-Datei (<code>data/*.json</code>)
+    benötigt, um korrekt platziert, gerendert und animiert zu werden.
+    Modelle werden über <code>dataUrl</code> in <code>MODEL_PRESETS[]</code> verknüpft
+    oder aus der Registry <code>models.json</code> geladen.
+  </p>
+
+  <div class="toc">
+    <div class="toc-title">Inhalt</div>
+    <ol>
+      <li><a href="#nodetypes">Node-Typen</a></li>
+      <li><a href="#nodes">Node-Felder</a></li>
+      <li><a href="#links">Link-Felder</a></li>
+      <li><a href="#models">Modell-Konfiguration</a></li>
+      <li><a href="#placement">Platzierungslogik</a></li>
+      <li><a href="#examples">Vollständige Beispiele</a></li>
+      <li><a href="#ws">WebSocket-Statusupdates</a></li>
+    </ol>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section id="nodetypes">
+    <h2>1 · Node-Typen</h2>
+
+    <div class="type-grid">
+      <div class="type-card t-switch">
+        <h4><code>switch</code></h4>
+        <p>Netzwerk-Switch. Wird als flacher Zylinder mit Antennen-Pins gerendert. Dient als Stern-Verteiler pro Etage / Sohle.</p>
+      </div>
+      <div class="type-card t-host">
+        <h4><code>host</code></h4>
+        <p>Server, Workstation, Drucker oder sonstiges Endgerät. Würfel-Geometrie mit Leuchtring.</p>
+      </div>
+      <div class="type-card t-ap">
+        <h4><code>accesspoint</code></h4>
+        <p>WLAN Access Point. Disc-Körper + Antenne + radiale Heatmap auf dem Etagenboden. Benötigt <code>wifiDbm</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section id="nodes">
+    <h2>2 · Node-Felder</h2>
+
+    <h3>Pflichtfelder (alle Node-Typen)</h3>
+    <table class="field-table">
+      <thead>
+        <tr>
+          <th>Feld</th><th>Typ</th><th>Pflicht</th><th>Beschreibung</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>id</code></td>
+          <td><code>string</code></td>
+          <td><span class="req">PFLICHT</span></td>
+          <td>Eindeutiger Bezeichner. Wird für Links als Referenz (<code>source</code>/<code>target</code>) und für WebSocket-Updates (<code>host</code>-Feld) verwendet. Keine Leerzeichen, keine Sonderzeichen außer <code>-</code> und <code>_</code>.</td>
+        </tr>
+        <tr>
+          <td><code>label</code></td>
+          <td><code>string</code></td>
+          <td><span class="req">PFLICHT</span></td>
+          <td>Anzeigename im 3D-Label, Inspector und Problemliste. Kann Leerzeichen und Umlaute enthalten.</td>
+        </tr>
+        <tr>
+          <td><code>type</code></td>
+          <td><code>string</code></td>
+          <td><span class="req">PFLICHT</span></td>
+          <td>Node-Typ: <code>switch</code> · <code>host</code> · <code>accesspoint</code>. Steuert Geometrie, Größe und Heatmap-Rendering.</td>
+        </tr>
+        <tr>
+          <td><code>status</code></td>
+          <td><code>string</code></td>
+          <td><span class="req">PFLICHT</span></td>
+          <td>Initialer Monitoring-Status: <span class="badge b-ok">ok</span> <span class="badge b-warn">warning</span> <span class="badge b-crit">critical</span> <span class="badge b-down">down</span> <span class="badge b-unkn">unknown</span>. Wird durch WebSocket-Updates überschrieben.</td>
+        </tr>
+        <tr>
+          <td><code>floor</code></td>
+          <td><code>string</code></td>
+          <td><span class="req">PFLICHT</span></td>
+          <td>Etagenbezeichnung – muss exakt einem <code>label</code> in <code>MODEL_PRESETS[].floors[]</code> entsprechen (z.B. <code>"SOHLE 1"</code>, <code>"2. OG"</code>, <code>"ÜBERTAGE"</code>). Steuert Sichtbarkeit bei Etagenfilter.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Positionierung – Gebäude-Modell (<code>type: 'building'</code>)</h3>
+    <div class="note">
+      Gebäudemodelle verwenden statische Szenen-Koordinaten. Kein Geo-Projektion.
+      Y-Werte werden von <code>buildFloors()</code> generiert (FLOOR_STEP = 35 Szeneneinheiten pro Etage).
+    </div>
+    <table class="field-table">
+      <thead>
+        <tr><th>Feld</th><th>Typ</th><th>Pflicht</th><th>Beschreibung</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>x</code></td><td><code>number</code></td>
+          <td><span class="req">PFLICHT</span></td>
+          <td>Horizontale Position (Ost/West) in Szeneneinheiten. Typischer Bereich: <code>−60 … +60</code>.</td>
+        </tr>
+        <tr>
+          <td><code>y</code></td><td><code>number</code></td>
+          <td><span class="req">PFLICHT</span></td>
+          <td>Vertikale Position. Muss dem Y-Wert der zugehörigen Etage entsprechen.<br>
+              Formel: <code>y = −(n−1)·17.5 + etage_index·35</code><br>
+              Beispiel 4 Etagen: EG=−52.5, 1.OG=−17.5, 2.OG=+17.5, 3.OG=+52.5</td>
+        </tr>
+        <tr>
+          <td><code>z</code></td><td><code>number</code></td>
+          <td><span class="req">PFLICHT</span></td>
+          <td>Horizontale Position (Nord/Süd) in Szeneneinheiten. Typischer Bereich: <code>−60 … +60</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Positionierung – Gruben-Modell (<code>type: 'mine'</code>)</h3>
+    <div class="note">
+      Grubenmodelle projizieren GPS-Koordinaten auf die Szene. X/Y/Z werden automatisch berechnet.
+      Größter Cluster pro Sohle wird auf <code>SCENE_MAX = 180</code> Einheiten normiert.
+    </div>
+    <table class="field-table">
+      <thead>
+        <tr><th>Feld</th><th>Typ</th><th>Pflicht</th><th>Beschreibung</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>lat</code></td><td><code>number</code></td>
+          <td><span class="req">PFLICHT</span></td>
+          <td>Breitengrad (WGS84), z.B. <code>51.4750</code>. Wird relativ zum Modell-Referenzpunkt projiziert.</td>
+        </tr>
+        <tr>
+          <td><code>lon</code></td><td><code>number</code></td>
+          <td><span class="req">PFLICHT</span></td>
+          <td>Längengrad (WGS84), z.B. <code>9.2900</code>.</td>
+        </tr>
+        <tr>
+          <td><code>x</code>, <code>y</code>, <code>z</code></td><td><code>number</code></td>
+          <td><span class="opt">OPTIONAL</span></td>
+          <td>Können als Fallback angegeben werden, werden bei Geo-Projektion ignoriert. Nützlich für Hybrid-Datensätze.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Optionale Felder</h3>
+    <table class="field-table">
+      <thead>
+        <tr><th>Feld</th><th>Typ</th><th>Pflicht</th><th>Beschreibung</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>wifiDbm</code></td><td><code>number</code></td>
+          <td><span class="cond">NUR accesspoint</span></td>
+          <td>Signalstärke in dBm (negativ). Steuert den Radius der Heatmap auf dem Etagenboden.<br>
+              Mapping: <code>−30 dBm → 48 Szeneneinheiten</code> (stark) bis <code>−90 dBm → 8 Szeneneinheiten</code> (schwach).<br>
+              Typische Werte: <code>−40</code> (sehr gut) · <code>−60</code> (gut) · <code>−75</code> (schwach).</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section id="links">
+    <h2>3 · Link-Felder</h2>
+
+    <table class="field-table">
+      <thead>
+        <tr><th>Feld</th><th>Typ</th><th>Pflicht</th><th>Beschreibung</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>source</code></td><td><code>string</code></td>
+          <td><span class="req">PFLICHT</span></td>
+          <td>Node-ID des Quell-Knotens.</td>
+        </tr>
+        <tr>
+          <td><code>target</code></td><td><code>string</code></td>
+          <td><span class="req">PFLICHT</span></td>
+          <td>Node-ID des Ziel-Knotens.</td>
+        </tr>
+        <tr>
+          <td><code>status</code></td><td><code>string</code></td>
+          <td><span class="req">PFLICHT</span></td>
+          <td>Link-Status: <span class="badge b-ok">ok</span> <span class="badge b-warn">warning</span> <span class="badge b-crit">critical</span> <span class="badge b-down">down</span> <span class="badge b-unkn">unknown</span>. Steuert Farbe der Linie und des Funken.</td>
+        </tr>
+        <tr>
+          <td><code>tunnel</code></td><td><code>boolean</code></td>
+          <td><span class="opt">OPTIONAL</span></td>
+          <td>
+            <code>true</code> → Link wird als leuchtende Tunnel-/Kabelkanal-Röhre gerendert (TubeGeometry + Glow-Shell).<br>
+            <strong>Auto-Erkennung Grubenmodell:</strong> Wenn beide Nodes auf einer Sohle liegen und die 3D-Distanz
+            &gt; <code>TUNNEL_MIN_DIST</code> (Standard: 30 Szeneneinheiten), wird automatisch <code>tunnel:true</code> angewendet.<br>
+            <strong>Gebäudemodell:</strong> muss explizit gesetzt werden (Kabelkanal-Optik, Bogen nach oben).
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Tunnel-Rendering: Mine vs. Gebäude</h3>
+    <table class="field-table">
+      <thead>
+        <tr><th>Parameter</th><th>Grubenmodell (Stollen)</th><th>Gebäudemodell (Kabelkanal)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Bogenrichtung</td><td>nach unten (−4 u)</td><td>nach oben (+3 u, Decke)</td></tr>
+        <tr><td>Innenrohr-Radius</td><td>0.65 Szeneneinheiten</td><td>0.25 Szeneneinheiten</td></tr>
+        <tr><td>Glow-Shell-Radius</td><td>3.2 Szeneneinheiten</td><td>1.4 Szeneneinheiten</td></tr>
+        <tr><td>Erkennung</td><td>automatisch (beide SOHLE + Distanz)</td><td>explizit <code>tunnel:true</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section id="models">
+    <h2>4 · Modell-Konfiguration</h2>
+
+    <p>Modelle werden in <code>MODEL_PRESETS[]</code> in <code>app.js</code> definiert
+    oder über <a href="#data">models.json</a> nachgeladen. Node-/Link-Daten liegen in
+    externen JSON-Dateien und werden per <code>dataUrl</code> referenziert.</p>
+
+    <h3>Gebäudemodell-Felder (<code>type: 'building'</code>)</h3>
+    <table class="field-table">
+      <thead>
+        <tr><th>Feld</th><th>Typ</th><th>Beschreibung</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td><code>string</code></td><td>Eindeutiger Bezeichner (URL-Hash).</td></tr>
+        <tr><td><code>name</code></td><td><code>string</code></td><td>Anzeigename im Modell-Dialog und OSM-Karte.</td></tr>
+        <tr><td><code>type</code></td><td><code>'building'</code></td><td>Statische Koordinaten, Etagenplatten, Kabelkanal-Tunnel.</td></tr>
+        <tr><td><code>floorCount</code></td><td><code>number</code></td><td>Anzahl Etagen (EG + OGs). Min 2, Max 20.</td></tr>
+        <tr><td><code>floorHeight</code></td><td><code>number</code></td><td>Etagenhöhe in Metern (nur Sub-Label).</td></tr>
+        <tr><td><code>width</code></td><td><code>number</code></td><td>Gebäudebreite in Metern (Etagenplatte).</td></tr>
+        <tr><td><code>length</code></td><td><code>number</code></td><td>Gebäudelänge in Metern (Etagenplatte).</td></tr>
+        <tr><td><code>lat</code>, <code>lon</code></td><td><code>number</code></td><td>GPS-Koordinate — erscheint als Marker auf der OSM-Übersichtskarte.</td></tr>
+        <tr><td><code>dataUrl</code></td><td><code>string</code></td><td>Pfad zur JSON-Datendatei, z.B. <code>'data/building.json'</code>. Wird gecacht.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Grubenmodell-Felder (<code>type: 'mine'</code>)</h3>
+    <table class="field-table">
+      <thead>
+        <tr><th>Feld</th><th>Typ</th><th>Beschreibung</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td><code>string</code></td><td>Eindeutiger Bezeichner.</td></tr>
+        <tr><td><code>name</code></td><td><code>string</code></td><td>Anzeigename.</td></tr>
+        <tr><td><code>type</code></td><td><code>'mine'</code></td><td>Geo-Projektion über lat/lon, Stollen-Tunnel-Glow.</td></tr>
+        <tr><td><code>floorHeight</code></td><td><code>number</code></td><td>Teufendifferenz pro Sohle in Metern (Sub-Label: „−300 m").</td></tr>
+        <tr><td><code>lat</code>, <code>lon</code></td><td><code>number</code></td><td>Schacht-Referenzkoordinate für Geo-Projektion + OSM-Marker.</td></tr>
+        <tr><td><code>floors[]</code></td><td><code>array</code></td><td>Sohlen-Liste: <code>{ label, sub }</code>. Label muss exakt dem <code>floor</code>-Feld der Nodes entsprechen.</td></tr>
+        <tr><td><code>dataUrl</code></td><td><code>string</code></td><td>Pfad zur JSON-Datendatei, z.B. <code>'data/grube1.json'</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Datacenter-Felder (<code>type: 'datacenter'</code>)</h3>
+    <table class="field-table">
+      <thead>
+        <tr><th>Feld</th><th>Typ</th><th>Beschreibung</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td><code>string</code></td><td>Eindeutiger Bezeichner.</td></tr>
+        <tr><td><code>name</code></td><td><code>string</code></td><td>Anzeigename.</td></tr>
+        <tr><td><code>type</code></td><td><code>'datacenter'</code></td><td>Rack-Layout, Server-Meshes, Link-Visualisierung deaktiviert.</td></tr>
+        <tr><td><code>width</code></td><td><code>number</code></td><td>Raumbreite in Metern.</td></tr>
+        <tr><td><code>length</code></td><td><code>number</code></td><td>Raumlänge in Metern.</td></tr>
+        <tr><td><code>rows</code></td><td><code>number</code></td><td>Anzahl Rack-Reihen (A, B, C …).</td></tr>
+        <tr><td><code>racksPerRow</code></td><td><code>number</code></td><td>Racks pro Reihe.</td></tr>
+        <tr><td><code>rackUnits</code></td><td><code>number</code></td><td>Höheneinheiten pro Rack (Standard: 42 HE).</td></tr>
+        <tr><td><code>dataUrl</code></td><td><code>string</code></td><td>Pfad zur JSON-Datendatei, z.B. <code>'data/dc1.json'</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Y-Werte der Etagen</h3>
+    <div class="note">
+      Der Abstand zwischen Etagen ist fest: <strong>FLOOR_STEP = 35 Szeneneinheiten</strong>.<br>
+      Gebäude wachsen nach oben (EG unten), Gruben nach unten (ÜBERTAGE oben).
+    </div>
+    <table class="field-table">
+      <thead>
+        <tr><th>Modell</th><th>Etage</th><th>Y bei 4 Etagen</th><th>Y bei 6 Etagen</th></tr>
+      </thead>
+      <tbody>
+        <tr><td rowspan="4"><span class="badge b-bld">building</span></td>
+            <td>EG / 0. Etage</td><td>−52.5</td><td>−87.5</td></tr>
+        <tr><td>1. OG</td><td>−17.5</td><td>−52.5</td></tr>
+        <tr><td>2. OG</td><td>+17.5</td><td>−17.5</td></tr>
+        <tr><td>3. OG</td><td>+52.5</td><td>+17.5</td></tr>
+        <tr><td rowspan="4"><span class="badge b-mine">mine</span></td>
+            <td>ÜBERTAGE</td><td>+52.5</td><td>+87.5</td></tr>
+        <tr><td>SOHLE 1</td><td>+17.5</td><td>+52.5</td></tr>
+        <tr><td>SOHLE 2</td><td>−17.5</td><td>+17.5</td></tr>
+        <tr><td>SOHLE 3</td><td>−52.5</td><td>−17.5</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section id="placement">
+    <h2>5 · Platzierungslogik</h2>
+
+    <h3>Grubenmodell – Geo-Projektion</h3>
+    <p>
+      Lat/Lon wird relativ zum Modell-Referenzpunkt (<code>cfg.lat</code>, <code>cfg.lon</code>) in
+      Meter-Offsets umgerechnet (Mercator-Näherung), dann auf den größten Cluster der Sohle
+      normiert (max. <strong>180 Szeneneinheiten</strong> breit). Der Cluster-Schwerpunkt wird auf
+      <code>(0, floor.y, 0)</code> zentriert.
+    </p>
+    <p><strong>Faustregel:</strong> Je weiter Nodes auf einer Sohle geografisch auseinanderliegen,
+    desto größer die Szene auf dieser Sohle. Kleinere Cluster (andere Sohlen) werden proportional kleiner dargestellt.</p>
+
+    <h3>Gebäudemodell – Statische Koordinaten</h3>
+    <p>X/Y/Z werden direkt als Szeneneinheiten übernommen. Der Empfangskorridor für Etagen-Sichtbarkeit
+    beträgt <strong>±8 Szeneneinheiten</strong> um den Etagen-Y-Wert.</p>
+
+    <h3>Tunnel-Auto-Erkennung (Grubenmodell)</h3>
+    <div class="topo">
+      <span class="hl">TUNNEL_MIN_DIST = 30</span> Szeneneinheiten<br><br>
+      Bedingung: <span class="tun">srcFloor.includes('SOHLE')</span> &amp;&amp; <span class="tun">tgtFloor.includes('SOHLE')</span><br>
+      &amp;&amp; <span class="ok">start.distanceTo(end) &gt; 30</span><br><br>
+      → <span class="hl">TubeGeometry + Glow-Shell</span> statt einfacher Linie
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section id="examples">
+    <h2>6 · Vollständige Beispiele</h2>
+
+    <h3>Switch – Grubenmodell (Geo)</h3>
+    <pre><span class="c">// Gilt für: mines, Geo-Projektion über lat/lon</span>
+{
+  <span class="n">id</span>:     <span class="s">'core-sw-s1'</span>,
+  <span class="n">label</span>:  <span class="s">'CORE-SW-SOHLE1'</span>,
+  <span class="n">type</span>:   <span class="s">'switch'</span>,
+  <span class="n">status</span>: <span class="s">'ok'</span>,
+  <span class="n">floor</span>:  <span class="s">'SOHLE 1'</span>,       <span class="c">// muss exakt mit floors[].label übereinstimmen</span>
+  <span class="n">lat</span>: <span class="v">51.5050</span>,            <span class="c">// WGS84 Breitengrad</span>
+  <span class="n">lon</span>: <span class="v">9.3350</span>,             <span class="c">// WGS84 Längengrad</span>
+}</pre>
+
+    <h3>Host – Gebäudemodell (statisch)</h3>
+    <pre><span class="c">// Gilt für: buildings, direkte Szenen-Koordinaten</span>
+{
+  <span class="n">id</span>:     <span class="s">'ws-2-01'</span>,
+  <span class="n">label</span>:  <span class="s">'WS-2-01'</span>,
+  <span class="n">type</span>:   <span class="s">'host'</span>,
+  <span class="n">status</span>: <span class="s">'ok'</span>,
+  <span class="n">floor</span>:  <span class="s">'2. OG'</span>,         <span class="c">// buildFloors() → y ≈ +17.5 bei 4 Etagen</span>
+  <span class="n">x</span>: <span class="v">-32</span>, <span class="n">y</span>: <span class="v">18</span>, <span class="n">z</span>: <span class="v">-20</span>,   <span class="c">// y exakt auf Etagen-Y setzen (±8 Toleranz)</span>
+}</pre>
+
+    <h3>AccessPoint – mit Heatmap</h3>
+    <pre>{
+  <span class="n">id</span>:      <span class="s">'ap-og2-01'</span>,
+  <span class="n">label</span>:   <span class="s">'AP-2OG-01'</span>,
+  <span class="n">type</span>:    <span class="s">'accesspoint'</span>,
+  <span class="n">status</span>:  <span class="s">'ok'</span>,
+  <span class="n">floor</span>:   <span class="s">'2. OG'</span>,
+  <span class="n">x</span>: <span class="v">0</span>, <span class="n">y</span>: <span class="v">18</span>, <span class="n">z</span>: <span class="v">-12</span>,
+  <span class="n">wifiDbm</span>: <span class="v">-41</span>,             <span class="c">// −30 (max) … −90 (min) → Radius 48 … 8</span>
+}</pre>
+
+    <h3>Link mit Tunnel-Optik (explizit)</h3>
+    <pre>{
+  <span class="n">source</span>: <span class="s">'sw-og2'</span>,
+  <span class="n">target</span>: <span class="s">'ws-2-01'</span>,
+  <span class="n">status</span>: <span class="s">'ok'</span>,
+  <span class="n">tunnel</span>: <span class="k">true</span>,             <span class="c">// Kabelkanal-Glow (Gebäude) oder Stollen-Glow (Grube)</span>
+}</pre>
+
+    <h3>Portal-Node (Modell-Verknüpfung)</h3>
+    <pre><span class="c">// linkedModel verweist auf die id eines anderen Modells.
+// → pulsierendes ⇒-Label + "Innenansicht öffnen"-Button im Inspector.</span>
+{
+  <span class="n">id</span>:           <span class="s">'portal-to-dc'</span>,
+  <span class="n">label</span>:        <span class="s">'Datacenter-Raum'</span>,
+  <span class="n">type</span>:         <span class="s">'host'</span>,
+  <span class="n">status</span>:       <span class="s">'ok'</span>,
+  <span class="n">floor</span>:        <span class="s">'EG'</span>,
+  <span class="n">x</span>: <span class="v">-35</span>, <span class="n">y</span>: <span class="v">-52</span>, <span class="n">z</span>: <span class="v">-35</span>,
+  <span class="n">linkedModel</span>:  <span class="s">'dc1'</span>,       <span class="c">// id des Ziel-Modells</span>
+}</pre>
+
+    <h3>Server-Node (Datacenter)</h3>
+    <pre><span class="c">// type:'server' → flaches 1HE-Mesh mit Status-LED.
+// Y-Achse: 0 = Rack-Boden, 8 = Rack-Decke (42 HE ≙ 8 Szeneneinheiten)</span>
+{
+  <span class="n">id</span>:     <span class="s">'web-dc-01'</span>,
+  <span class="n">label</span>:  <span class="s">'web-dc-01'</span>,
+  <span class="n">type</span>:   <span class="s">'server'</span>,
+  <span class="n">status</span>: <span class="s">'ok'</span>,
+  <span class="n">floor</span>:  <span class="s">'Datacenter'</span>,
+  <span class="n">x</span>: <span class="v">-13</span>, <span class="n">y</span>: <span class="v">1.0</span>, <span class="n">z</span>: <span class="v">0</span>,   <span class="c">// y ≈ 1–2: unteres Drittel, 4–5: Mitte, 6–7: oben</span>
+}</pre>
+
+    <h3>Eigenes Modell-Preset (externe Datei)</h3>
+    <pre><span class="c">// In MODEL_PRESETS[] in app.js eintragen:</span>
+{
+  <span class="n">id</span>:          <span class="s">'werk-nord'</span>,
+  <span class="n">name</span>:        <span class="s">'Werk Nord'</span>,
+  <span class="n">type</span>:        <span class="s">'mine'</span>,
+  <span class="n">floorHeight</span>: <span class="v">250</span>,
+  <span class="n">lat</span>: <span class="v">51.48</span>, <span class="n">lon</span>: <span class="v">9.31</span>,
+  <span class="n">floors</span>: [
+    { <span class="n">label</span>: <span class="s">'ÜBERTAGE'</span>, <span class="n">sub</span>: <span class="s">'Schachtanlage'</span> },
+    { <span class="n">label</span>: <span class="s">'SOHLE 1'</span>,  <span class="n">sub</span>: <span class="s">'−250 m'</span> },
+    { <span class="n">label</span>: <span class="s">'SOHLE 2'</span>,  <span class="n">sub</span>: <span class="s">'−500 m'</span> },
+  ],
+  <span class="n">dataUrl</span>: <span class="s">'data/werk-nord.json'</span>,  <span class="c">// externe JSON-Datei (gecacht nach erstem Laden)</span>
+}
+
+<span class="c">// data/werk-nord.json (Struktur):</span>
+{ <span class="n">"nodes"</span>: [ <span class="c">/* Node-Objekte */</span> ], <span class="n">"links"</span>: [ <span class="c">/* Link-Objekte */</span> ] }</pre>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section id="ws">
+    <h2>7 · WebSocket-Statusupdates</h2>
+
+    <p>
+      Die Karte kann Live-Statusupdates über WebSocket empfangen. Verbindung herstellen mit:
+    </p>
+    <pre><span class="c">// In app.js – Zeile am Ende der Datei auskommentieren:</span>
+app.connectWS(<span class="s">'ws://nagios-server:8008/ws/map/my-map'</span>);</pre>
+
+    <p>Erwartetes Nachrichtenformat (JSON):</p>
+    <pre>{
+  <span class="n">"type"</span>:  <span class="s">"status_update"</span>,
+  <span class="n">"hosts"</span>: [
+    { <span class="n">"id"</span>: <span class="s">"core-sw-s1"</span>, <span class="n">"status"</span>: <span class="s">"ok"</span>       },
+    { <span class="n">"id"</span>: <span class="s">"web-01"</span>,     <span class="n">"status"</span>: <span class="s">"critical"</span> },
+    { <span class="n">"id"</span>: <span class="s">"fw-01"</span>,      <span class="n">"status"</span>: <span class="s">"down"</span>     }
+  ]
+}</pre>
+
+    <div class="warn-box">
+      <strong>Hinweis:</strong> Das Feld <code>id</code> im WebSocket-Update muss exakt der
+      <code>id</code> des entsprechenden Nodes im geladenen Datensatz entsprechen.
+      Unbekannte IDs werden stillschweigend ignoriert.
+    </div>
+
+    <p>Bei einem Statuswechsel auf <code>critical</code> oder <code>down</code> werden automatisch
+    Pulsringe um den betroffenen Node gespawnt.</p>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section id="data">
+    <h2>8 · Externe Datendateien &amp; Registry</h2>
+
+    <p>Alle Node-/Link-Daten liegen als separate JSON-Dateien im Ordner <code>data/</code>.
+    Das ermöglicht beliebig viele Standorte ohne <code>app.js</code> anzufassen.</p>
+
+    <h3>Dateistruktur</h3>
+    <pre>v3/
+├── app.js
+├── index.html
+├── models.json          <span class="c">← optionale externe Registry</span>
+└── data/
+    ├── building.json
+    ├── dc1.json
+    ├── grube1.json
+    └── grube2.json</pre>
+
+    <h3>JSON-Dateiformat (<code>data/*.json</code>)</h3>
+    <pre>{
+  <span class="n">"nodes"</span>: [ <span class="c">/* Node-Objekte – identisch zu inline-Daten */</span> ],
+  <span class="n">"links"</span>: [ <span class="c">/* Link-Objekte */</span> ]
+}</pre>
+
+    <h3>Modell-Registry (<code>models.json</code>)</h3>
+    <p>Optionale externe Liste aller Modelle. Wird über
+    <code>ModelManager.loadRegistry('models.json')</code> geladen (im Boot-Abschnitt
+    von <code>app.js</code> auskommentiert). Format: Array von Modell-Preset-Objekten
+    mit <code>dataUrl</code> statt inline-<code>data</code>.</p>
+    <pre>[
+  {
+    <span class="n">"id"</span>:       <span class="s">"grube1"</span>,
+    <span class="n">"name"</span>:     <span class="s">"Grube 1 · Heringen"</span>,
+    <span class="n">"type"</span>:     <span class="s">"mine"</span>,
+    <span class="n">"lat"</span>: <span class="v">50.8922</span>, <span class="n">"lon"</span>: <span class="v">9.8979</span>,
+    <span class="n">"dataUrl"</span>:  <span class="s">"data/grube1.json"</span>,
+    <span class="n">"floors"</span>: [ <span class="c">/* ... */</span> ]
+  }
+]</pre>
+
+    <div class="note">
+      Bereits in <code>MODEL_PRESETS[]</code> vorhandene IDs werden beim Registry-Laden
+      übersprungen — keine Duplikate.
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section id="shortcuts">
+    <h2>9 · Tastatur-Shortcuts &amp; UI</h2>
+
+    <table class="field-table">
+      <thead>
+        <tr><th>Taste / Aktion</th><th>Funktion</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>M</code></td><td>OSM-Übersichtskarte öffnen / schließen</td></tr>
+        <tr><td><code>Ctrl+F</code></td><td>Host-Suche fokussieren</td></tr>
+        <tr><td><code>Escape</code></td><td>Inspector schließen · 2D-Modus verlassen · Cockpit beenden · Suche leeren</td></tr>
+        <tr><td>Mausrad</td><td>Zoom</td></tr>
+        <tr><td>Linke Maustaste ziehen</td><td>Szene drehen (deaktiviert Auto-Orbit)</td></tr>
+        <tr><td>Rechte Maustaste ziehen</td><td>Szene verschieben</td></tr>
+        <tr><td>Node anklicken</td><td>Inspector öffnen</td></tr>
+        <tr><td>Etagen-Button (rechts)</td><td>2D-Grundrissansicht der Etage</td></tr>
+      </tbody>
+    </table>
+
+    <h3>HUD-Buttons</h3>
+    <table class="field-table">
+      <thead>
+        <tr><th>Button</th><th>Funktion</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>🗺</td><td>OSM-Übersichtskarte (alle Standorte mit lat/lon als Marker)</td></tr>
+        <tr><td>?</td><td>Diese Dokumentationsseite</td></tr>
+        <tr><td>⚡</td><td>Cockpit-Modus (nur Hosts mit Problem)</td></tr>
+        <tr><td>⚑ n</td><td>Problemliste (alle kritischen / down Hosts)</td></tr>
+        <tr><td>Modellname ▾</td><td>Modell wechseln / neues Modell anlegen</td></tr>
+        <tr><td>Auto-Orbit</td><td>Kamera-Rotation ein/aus</td></tr>
+        <tr><td>ORBIT RADIUS</td><td>Abstand der Orbit-Kamera (30–250 Szeneneinheiten)</td></tr>
+        <tr><td>FLOW SPEED</td><td>Geschwindigkeit der Datenfluss-Animation auf Links</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</div><!-- /page -->
+</body>
+</html>

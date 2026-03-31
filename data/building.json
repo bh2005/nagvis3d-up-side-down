@@ -1,0 +1,72 @@
+{
+  "nodes": [
+    { "id": "mdf-sw",       "label": "MDF-Switch",        "type": "switch", "status": "ok",
+      "x":   0, "y": -52, "z":   0, "floor": "EG", "room": "Serverraum EG" },
+    { "id": "portal-to-dc", "label": "Datacenter-Raum",   "type": "host",   "status": "ok",
+      "x": -35, "y": -52, "z": -35, "floor": "EG", "room": "Serverraum EG", "linkedModel": "dc1" },
+    { "id": "reception",    "label": "Reception-PC",       "type": "host",   "status": "ok",
+      "x":  24, "y": -52, "z":  20, "floor": "EG", "room": "Empfang" },
+    { "id": "printer-eg",   "label": "Drucker EG",         "type": "host",   "status": "ok",
+      "x": -20, "y": -52, "z":  22, "floor": "EG", "room": "Empfang" },
+
+    { "id": "sw-og1",    "label": "SW-1.OG",   "type": "switch", "status": "ok",
+      "x":   0, "y": -18, "z":   0, "floor": "1. OG", "room": "Technikraum 1.OG" },
+    { "id": "ws-1-01",   "label": "WS-1-01",   "type": "host",   "status": "ok",
+      "x": -30, "y": -18, "z": -22, "floor": "1. OG", "room": "Büro 1.01" },
+    { "id": "ws-1-02",   "label": "WS-1-02",   "type": "host",   "status": "warning",
+      "x":  30, "y": -18, "z": -22, "floor": "1. OG", "room": "Büro 1.02" },
+    { "id": "ws-1-03",   "label": "WS-1-03",   "type": "host",   "status": "ok",
+      "x":   0, "y": -18, "z":  34, "floor": "1. OG", "room": "Besprechung 1.OG" },
+
+    { "id": "sw-og2",    "label": "SW-2.OG",   "type": "switch", "status": "ok",
+      "x":   0, "y":  18, "z":   0, "floor": "2. OG", "room": "Technikraum 2.OG" },
+    { "id": "ws-2-01",   "label": "WS-2-01",   "type": "host",   "status": "ok",
+      "x": -32, "y":  18, "z": -20, "floor": "2. OG", "room": "Büro 2.01" },
+    { "id": "ws-2-02",   "label": "WS-2-02",   "type": "host",   "status": "critical",
+      "x":  32, "y":  18, "z": -20, "floor": "2. OG", "room": "Büro 2.02" },
+    { "id": "voip-2",    "label": "VoIP-2.OG", "type": "host",   "status": "ok",
+      "x":  16, "y":  18, "z":  30, "floor": "2. OG", "room": "Konferenzraum 2.OG" },
+
+    { "id": "sw-og3",    "label": "SW-3.OG",    "type": "switch", "status": "ok",
+      "x":   0, "y":  52, "z":   0, "floor": "3. OG", "room": "Serverraum 3.OG" },
+    { "id": "server-01", "label": "server-01",  "type": "host",   "status": "ok",
+      "x": -26, "y":  52, "z": -24, "floor": "3. OG", "room": "Serverraum 3.OG" },
+    { "id": "server-02", "label": "server-02",  "type": "host",   "status": "ok",
+      "x":  26, "y":  52, "z": -24, "floor": "3. OG", "room": "Serverraum 3.OG" },
+    { "id": "nas-01",    "label": "NAS-01",     "type": "host",   "status": "warning",
+      "x":   0, "y":  52, "z":  34, "floor": "3. OG", "room": "Serverraum 3.OG" },
+
+    { "id": "ap-eg-01",  "label": "AP-EG-01",   "type": "accesspoint", "status": "ok",
+      "wifiDbm": -52, "x":  18, "y": -52, "z": -18, "floor": "EG" },
+    { "id": "ap-og1-01", "label": "AP-1OG-01",  "type": "accesspoint", "status": "ok",
+      "wifiDbm": -44, "x": -22, "y": -18, "z":  10, "floor": "1. OG" },
+    { "id": "ap-og1-02", "label": "AP-1OG-02",  "type": "accesspoint", "status": "warning",
+      "wifiDbm": -68, "x":  24, "y": -18, "z":  10, "floor": "1. OG" },
+    { "id": "ap-og2-01", "label": "AP-2OG-01",  "type": "accesspoint", "status": "ok",
+      "wifiDbm": -41, "x":   0, "y":  18, "z": -12, "floor": "2. OG" },
+    { "id": "ap-og3-01", "label": "AP-3OG-01",  "type": "accesspoint", "status": "ok",
+      "wifiDbm": -55, "x": -18, "y":  52, "z":  16, "floor": "3. OG" },
+    { "id": "ap-og3-02", "label": "AP-3OG-02",  "type": "accesspoint", "status": "ok",
+      "wifiDbm": -49, "x":  20, "y":  52, "z":  16, "floor": "3. OG" }
+  ],
+  "links": [
+    { "source": "mdf-sw",  "target": "sw-og1",    "status": "ok" },
+    { "source": "sw-og1",  "target": "sw-og2",    "status": "ok" },
+    { "source": "sw-og2",  "target": "sw-og3",    "status": "ok" },
+
+    { "source": "mdf-sw",  "target": "reception",  "status": "ok",       "tunnel": true },
+    { "source": "mdf-sw",  "target": "printer-eg", "status": "ok",       "tunnel": true },
+
+    { "source": "sw-og1",  "target": "ws-1-01",   "status": "ok",       "tunnel": true },
+    { "source": "sw-og1",  "target": "ws-1-02",   "status": "warning",  "tunnel": true },
+    { "source": "sw-og1",  "target": "ws-1-03",   "status": "ok",       "tunnel": true },
+
+    { "source": "sw-og2",  "target": "ws-2-01",   "status": "ok",       "tunnel": true },
+    { "source": "sw-og2",  "target": "ws-2-02",   "status": "critical", "tunnel": true },
+    { "source": "sw-og2",  "target": "voip-2",    "status": "ok",       "tunnel": true },
+
+    { "source": "sw-og3",  "target": "server-01", "status": "ok",       "tunnel": true },
+    { "source": "sw-og3",  "target": "server-02", "status": "ok",       "tunnel": true },
+    { "source": "sw-og3",  "target": "nas-01",    "status": "warning",  "tunnel": true }
+  ]
+}
