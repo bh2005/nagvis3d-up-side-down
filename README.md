@@ -5,10 +5,7 @@ Die klassische 2D-Welt von NagVis wird hier in eine echte dreidimensionale Umgeb
 
 Besonders geeignet für Visualisierungen **über Tage** (Gebäude, Rechenzentren, Gelände) und **unter Tage** (Tunnel, Stollen, Bergbau, Infrastruktur).
 
-[![CI](https://github.com/bh2005/nagvis-kurz-vor-2/actions/workflows/ci.yml/badge.svg)](https://github.com/bh2005/nagvis-kurz-vor-2/actions/workflows/ci.yml)
-[![Latest Release](https://img.shields.io/github/v/release/bh2005/nagvis-kurz-vor-2?label=Release)](https://github.com/bh2005/nagvis-kurz-vor-2/releases/latest)
 [![Changelog](https://img.shields.io/badge/Changelog-ansehen-blue)](src/changelog.txt)
-[![Code of Conduct](https://img.shields.io/badge/Code_of_Conduct-2.1-blue)](CODE_OF_CONDUCT.md)
 [![Live Demo](https://img.shields.io/badge/Live_Demo-ansehen-brightgreen)](https://threed-maps-18xj.onrender.com/#dc1)
 
 
