@@ -250,6 +250,9 @@ export class FavoritesBar {
 
   startSlideshow() {
     if (this._slideItems().length < 2) return;
+    // Auto-Orbit pausieren und Zustand merken
+    this._orbitWasOn = this._app.autoOrbit;
+    if (this._app.autoOrbit) this._app._setAutoOrbit(false);
     this._slideIdx = 0;
     this.gotoSlideIdx(0);
     this._slide = setInterval(() => this.gotoSlideIdx(this._slideIdx + 1), this._slideInterval());
@@ -261,6 +264,9 @@ export class FavoritesBar {
   stopSlideshow() {
     clearInterval(this._slide);
     this._slide = null;
+    // Auto-Orbit wiederherstellen
+    if (this._orbitWasOn) this._app._setAutoOrbit(true);
+    this._orbitWasOn = false;
     this._highlightActive();
     const btn = document.getElementById('btn-slideshow');
     btn.classList.remove('active');
