@@ -595,6 +595,11 @@ class NV2Map3D {
     this._wifiMeshes   = {};   // id → heatmap mesh for APs
     this._cockpitMode  = false;
     this._prevStatus   = {};   // id → last known status (for pulse detection)
+    // ── Exploded-View state ──
+    this._explodeFactor      = 1.0;   // current (animated)
+    this._explodeTarget      = 1.0;   // target
+    this._baseNodePositions  = {};    // id → Vector3 at factor=1
+    this._floorCenterY       = 0;     // midpoint of all floor Ys
 
     this._model        = initialModel;
     this._activeFloors = buildFloors(initialModel);
@@ -606,6 +611,7 @@ class NV2Map3D {
     this._buildLinks();
     this._buildFloors();
     this._buildFloorNav();
+    this._storeBasePositions();
     this._setupUI();
     this._animate();
     this._log('Scene ready · ' + data.nodes.length + ' nodes');
@@ -685,6 +691,10 @@ class NV2Map3D {
     this._buildLinks();
     this._buildFloors();
     this._buildFloorNav();
+    this._storeBasePositions();
+    this._explodeFactor = 1.0; this._explodeTarget = 1.0;
+    const sl = document.getElementById('explode-slider');
+    if (sl) { sl.value = 100; document.getElementById('explode-val').textContent = '1.0×'; }
 
     const nameEl = document.getElementById('btn-model-name');
     if (nameEl) nameEl.textContent = cfg.name;
@@ -897,6 +907,7 @@ class NV2Map3D {
       plate.rotation.x = -Math.PI / 2;
       plate.position.y = fc.y - 0.05;
       plate.userData.floorY = fc.y;
+      plate.userData.floorYOffset = -0.05;
       this.scene.add(plate);
       this._floorObjs.push(plate);
 
@@ -910,6 +921,7 @@ class NV2Map3D {
       edges.rotation.x = -Math.PI / 2;
       edges.position.y = fc.y;
       edges.userData.floorY = fc.y;
+      edges.userData.floorYOffset = 0;
       this.scene.add(edges);
       this._floorObjs.push(edges);
 
@@ -924,6 +936,7 @@ class NV2Map3D {
       const lbl = new CSS2DObject(div);
       lbl.position.set(-(W/2 + 6), fc.y + 0.5, 0);
       lbl.userData.floorY = fc.y;
+      lbl.userData.floorYOffset = 0.5;
       this.scene.add(lbl);
       this._floorObjs.push(lbl);
     });
@@ -1214,6 +1227,13 @@ class NV2Map3D {
   // ── 2D Mode ────────────────────────────────────────────────
 
   enter2D(floorY) {
+    // Explode muss zurückgesetzt sein, damit floorY-Vergleiche stimmen
+    if (this._explodeFactor !== 1.0 || this._explodeTarget !== 1.0) {
+      this._explodeTarget = 1.0; this._explodeFactor = 1.0;
+      this._applyExplodePositions();
+      const sl = document.getElementById('explode-slider');
+      if (sl) { sl.value = 100; document.getElementById('explode-val').textContent = '1.0×'; }
+    }
     this._mode2D = true; this._floor2DY = floorY;
     this._setAutoOrbit(false);
 
@@ -1322,6 +1342,11 @@ class NV2Map3D {
       const pos   = this.nodePositions[node.id] ?? new THREE.Vector3(0, 0, 0);
       const group = this._createNodeMesh(node);
       group.position.copy(pos);
+      group.userData.floorBaseY = this._activeFloors.length
+        ? this._activeFloors.reduce((best, f) =>
+            Math.abs(f.y - pos.y) < Math.abs(best - pos.y) ? f.y : best,
+            this._activeFloors[0].y)
+        : pos.y;
       this.scene.add(group);
       this.nodeObjects[node.id] = group;
       this._prevStatus[node.id] = node.status;
@@ -1422,6 +1447,7 @@ class NV2Map3D {
         line, spark,
         start: start.clone(), end: end.clone(),
         prog: Math.random(),
+        srcId: link.source, tgtId: link.target,
         srcY: srcNode ? (this.nodePositions[srcNode.id]?.y ?? 0) : 0,
         tgtY: tgtNode ? (this.nodePositions[tgtNode.id]?.y ?? 0) : 0,
       });
@@ -1475,6 +1501,9 @@ class NV2Map3D {
     this.tunnelObjects.push({
       tube, glow, spark, curve,
       prog: Math.random(),
+      srcId: link.source, tgtId: link.target,
+      rInner, rOuter,
+      midYOffset: isDC ? 1.5 : isBuilding ? 3 : -4,
       srcY: srcNode ? start.y : 0,
       tgtY: tgtNode ? end.y   : 0,
     });
@@ -1661,6 +1690,7 @@ class NV2Map3D {
         );
         ring.rotation.x = -Math.PI / 2;
         ring.position.set(group.position.x, group.position.y + 0.5, group.position.z);
+        ring.userData.nodeId = group.userData.id;
         this.scene.add(ring);
         this._searchRings.push(ring);
       } else {
@@ -1836,6 +1866,12 @@ class NV2Map3D {
       document.getElementById('orbit-radius-val').textContent = e.target.value;
     };
 
+    document.getElementById('explode-slider').oninput = (e) => {
+      const factor = e.target.value / 100;
+      document.getElementById('explode-val').textContent = factor.toFixed(1) + '×';
+      this.setExplode(factor);
+    };
+
     const hint = document.getElementById('ctrl-hint');
     const hide = () => setTimeout(() => hint.classList.add('hidden'), 2500);
     this.renderer.domElement.addEventListener('pointerdown', hide, { once: true });
@@ -1849,6 +1885,93 @@ class NV2Map3D {
     d.innerHTML = `<span class="ts">[${t}]</span> ${msg}`;
     c.prepend(d);
     while (c.children.length > 10) c.removeChild(c.lastChild);
+  }
+
+  // ── Exploded-View ──────────────────────────────────────────
+
+  _storeBasePositions() {
+    this._floorCenterY = this._activeFloors.length
+      ? this._activeFloors.reduce((s, f) => s + f.y, 0) / this._activeFloors.length
+      : 0;
+    this._baseNodePositions = {};
+    Object.entries(this.nodePositions).forEach(([id, pos]) => {
+      this._baseNodePositions[id] = pos.clone();
+    });
+  }
+
+  setExplode(factor) {
+    this._explodeTarget = Math.max(1, Math.min(4, factor));
+  }
+
+  _applyExplodePositions() {
+    const factor  = this._explodeFactor;
+    const center  = this._floorCenterY;
+
+    // baseFloorY → exploded Y
+    const floorYMap = new Map();
+    this._activeFloors.forEach(fc => {
+      floorYMap.set(fc.y, center + (fc.y - center) * factor);
+    });
+
+    // Floor plates / edges / labels
+    this._floorObjs.forEach(obj => {
+      const baseY = obj.userData.floorY;
+      if (baseY == null) return;
+      const newY = floorYMap.get(baseY) ?? baseY;
+      obj.position.y = newY + (obj.userData.floorYOffset ?? 0);
+    });
+
+    // Nodes
+    Object.values(this.nodeObjects).forEach(g => {
+      const id        = g.userData.id;
+      const baseFloorY = g.userData.floorBaseY;
+      if (id == null || baseFloorY == null) return;
+      const newFloorY  = floorYMap.get(baseFloorY) ?? baseFloorY;
+      const baseNodeY  = this._baseNodePositions[id]?.y ?? baseFloorY;
+      g.position.y = newFloorY + (baseNodeY - baseFloorY);
+    });
+
+    // Links – update geometry + spark
+    this.linkObjects.forEach(s => {
+      const srcG = this.nodeObjects[s.srcId];
+      const tgtG = this.nodeObjects[s.tgtId];
+      if (!srcG || !tgtG) return;
+      s.start.copy(srcG.position);
+      s.end.copy(tgtG.position);
+      const pos = s.line.geometry.attributes.position;
+      pos.setXYZ(0, s.start.x, s.start.y, s.start.z);
+      pos.setXYZ(1, s.end.x, s.end.y, s.end.z);
+      pos.needsUpdate = true;
+    });
+
+    // Tunnels – rebuild TubeGeometry with updated curve endpoints
+    this.tunnelObjects.forEach(s => {
+      const srcG = this.nodeObjects[s.srcId];
+      const tgtG = this.nodeObjects[s.tgtId];
+      if (!srcG || !tgtG) return;
+      const tStart = srcG.position.clone();
+      const tEnd   = tgtG.position.clone();
+      const tMid   = tStart.clone().lerp(tEnd, 0.5);
+      tMid.y += s.midYOffset;
+      const newCurve = new THREE.CatmullRomCurve3([tStart, tMid, tEnd]);
+      s.curve = newCurve;
+      s.tube.geometry.dispose();
+      s.tube.geometry = new THREE.TubeGeometry(newCurve, 28, s.rInner, 8, false);
+      s.glow.geometry.dispose();
+      s.glow.geometry = new THREE.TubeGeometry(newCurve, 28, s.rOuter, 8, false);
+    });
+
+    // Wifi heatmaps follow their node
+    Object.entries(this._wifiMeshes).forEach(([id, mesh]) => {
+      const g = this.nodeObjects[id];
+      if (g) mesh.position.y = g.position.y + 0.25;
+    });
+
+    // Search rings follow their node
+    this._searchRings.forEach(r => {
+      const g = r.userData.nodeId ? this.nodeObjects[r.userData.nodeId] : null;
+      if (g) r.position.y = g.position.y + 0.5;
+    });
   }
 
   // ── Render loop ────────────────────────────────────────────
@@ -1911,8 +2034,129 @@ class NV2Map3D {
       this._searchRings.forEach(r => { r.material.opacity = sp; });
     }
 
+    // ── Explode LERP ──────────────────────────────────────────
+    if (Math.abs(this._explodeFactor - this._explodeTarget) > 0.001) {
+      this._explodeFactor += (this._explodeTarget - this._explodeFactor) * 0.08;
+      this._applyExplodePositions();
+    }
+
     this.renderer.render(this.scene, this.camera);
     this.labelRenderer.render(this.scene, this.camera);
+    window._minimap?.render();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MINIMAP
+// ─────────────────────────────────────────────────────────────
+class Minimap {
+  constructor(app) {
+    this._app     = app;
+    this._el      = document.getElementById('minimap');
+    this._canvas  = document.getElementById('minimap-canvas');
+    this._ctx     = this._canvas.getContext('2d');
+    this._visible = false;
+
+    document.getElementById('btn-minimap').addEventListener('click', () => this.toggle());
+    document.getElementById('minimap-close').addEventListener('click', () => this.hide());
+  }
+
+  toggle() { this._visible ? this.hide() : this.show(); }
+
+  show() {
+    this._visible = true;
+    this._el.classList.add('visible');
+    document.getElementById('btn-minimap').classList.add('active');
+  }
+
+  hide() {
+    this._visible = false;
+    this._el.classList.remove('visible');
+    document.getElementById('btn-minimap').classList.remove('active');
+  }
+
+  render() {
+    if (!this._visible) return;
+    const app    = this._app;
+    const canvas = this._canvas;
+    const ctx    = this._ctx;
+    const W = canvas.width;
+    const H = canvas.height;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(8,12,20,0.95)';
+    ctx.fillRect(0, 0, W, H);
+
+    // XZ-Ausdehnung aller sichtbaren Nodes
+    const nodes = app.data?.nodes ?? [];
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    nodes.forEach(n => {
+      const g = app.nodeObjects[n.id];
+      if (!g) return;
+      minX = Math.min(minX, g.position.x); maxX = Math.max(maxX, g.position.x);
+      minZ = Math.min(minZ, g.position.z); maxZ = Math.max(maxZ, g.position.z);
+    });
+    if (!isFinite(minX)) return;
+
+    const pad    = 14;
+    const rangeX = Math.max(maxX - minX, 1);
+    const rangeZ = Math.max(maxZ - minZ, 1);
+    const scale  = Math.min((W - pad * 2) / rangeX, (H - pad * 2) / rangeZ);
+    const offX   = (W - rangeX * scale) / 2;
+    const offZ   = (H - rangeZ * scale) / 2;
+    const px = x => (x - minX) * scale + offX;
+    const pz = z => (z - minZ) * scale + offZ;
+
+    // Etagen-Umrisse
+    app._activeFloors.forEach(fc => {
+      const wl = app._floorSceneWL[fc.y];
+      if (!wl) return;
+      const { W: fw, L: fl } = wl;
+      const [r, g, b] = fc.accent;
+      ctx.strokeStyle = `rgba(${r},${g},${b},0.3)`;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(px(-fw / 2), pz(-fl / 2), fw * scale, fl * scale);
+    });
+
+    // Node-Punkte
+    nodes.forEach(n => {
+      const group = app.nodeObjects[n.id];
+      if (!group || !group.visible) return;
+      const cfg = S(n.status ?? group.userData.status ?? 'unknown');
+      const cx  = px(group.position.x);
+      const cz  = pz(group.position.z);
+      const isAlert = al(n.status);
+      if (isAlert) { ctx.shadowColor = '#' + cfg.hex.toString(16).padStart(6, '0'); ctx.shadowBlur = 6; }
+      ctx.beginPath();
+      ctx.arc(cx, cz, isAlert ? 4 : 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#' + cfg.hex.toString(16).padStart(6, '0');
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    // Kamera-Pfeil
+    const cam = app.camera;
+    const cpx = Math.max(6, Math.min(W - 6, px(cam.position.x)));
+    const cpz = Math.max(6, Math.min(H - 6, pz(cam.position.z)));
+    const dir = new THREE.Vector3();
+    cam.getWorldDirection(dir);
+    const angle = Math.atan2(dir.x, dir.z);
+
+    ctx.save();
+    ctx.translate(cpx, cpz);
+    ctx.rotate(angle);
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, -8);
+    ctx.lineTo(-4, 6);
+    ctx.lineTo(0, 3);
+    ctx.lineTo(4, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
   }
 }
 
@@ -2235,6 +2479,7 @@ class MapOverlay {
   window.modelDialog = new ModelDialog(window.app);
   window.problemList = new ProblemList(window.app);
   window.mapOverlay  = new MapOverlay(window.app);
+  try { window._minimap = new Minimap(window.app); } catch(e) { console.error('Minimap init:', e); }
 
   document.getElementById('btn-model-name').textContent = initialModel.name;
   await window.app.loadModel(initialModel);

@@ -52,9 +52,14 @@
       <!-- Cockpit mode -->
       <button class="btn" id="btn-cockpit" onclick="app.toggleCockpit()" title="Cockpit-Modus (nur Probleme)">⚡</button>
 
+      <!-- Favorites panel toggle -->
+      <button class="btn" id="btn-fav-panel" title="Favoriten (gespeicherte Ansichten)">★</button>
+
       <!-- Problem list -->
       <button class="btn" id="btn-problems" onclick="problemList.toggle()">⚑ 0</button>
 
+      <!-- Minimap -->
+      <button class="btn" id="btn-minimap" title="Minimap (Draufsicht)">⊡</button>
       <!-- Map overview -->
       <button class="btn" id="btn-map" onclick="mapOverlay.toggle()" title="OSM-Übersichtskarte (M)">🗺</button>
       <!-- Info page -->
@@ -85,12 +90,34 @@
       <input type="range" id="flow-speed" min="0" max="100" value="40">
       <label>ORBIT RADIUS <span id="orbit-radius-val">90</span></label>
       <input type="range" id="orbit-radius" min="30" max="250" value="90">
+      <label>SPREIZUNG <span id="explode-val">1.0×</span></label>
+      <input type="range" id="explode-slider" min="100" max="400" value="100">
       <div class="btn-row">
         <button class="btn active" id="btn-orbit" onclick="app.toggleOrbit()">Auto-Orbit</button>
         <button class="btn"                        onclick="app.resetCam()">Reset</button>
       </div>
     </div>
   </div>
+</div>
+
+<!-- Minimap -->
+<div id="minimap">
+  <div class="minimap-hdr">
+    <span>MINIMAP</span>
+    <button id="minimap-close">×</button>
+  </div>
+  <canvas id="minimap-canvas" width="184" height="184"></canvas>
+</div>
+
+<!-- ═══════════ FAVORITES PANEL ═══════════ -->
+<div id="favorites-panel">
+  <div id="fav-hdr">
+    <span class="dlg-title">★ <span>Favoriten</span></span>
+    <button class="btn btn-sm" id="btn-fav-save">＋ Speichern</button>
+    <button class="btn btn-sm" id="btn-slideshow" disabled>▶ Slideshow</button>
+    <span class="dlg-close" id="fav-close">✕</span>
+  </div>
+  <div id="fav-list"></div>
 </div>
 
 <!-- Floor nav (right) -->
@@ -248,6 +275,6 @@
 <input type="file" id="bg-file-input" accept="image/*" style="display:none"
        onchange="app._onBgFileSelected(this.files[0]); this.value=''">
 
-<script type="module" src="app.js"></script>
+<script type="module" src="main.js"></script>
 </body>
 </html>
