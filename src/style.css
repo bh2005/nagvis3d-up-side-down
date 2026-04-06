@@ -218,7 +218,19 @@ body, html {
 #bottom-bar { display:flex; gap:8px; align-items:flex-end; }
 #event-log { width:270px; height:110px; overflow:hidden;
              font-family:monospace; font-size:10px; line-height:1.6; }
-#log-title { color:var(--text-muted); margin-bottom:3px; font-size:9px; letter-spacing:1px; }
+#log-title {
+  color: var(--text-muted); font-size: 9px; letter-spacing: 1px; margin-bottom: 3px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+#btn-log-toggle {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 9px; cursor: pointer; padding: 0 2px; line-height: 1;
+  transition: color .15s;
+}
+#btn-log-toggle:hover { color: var(--text); }
+#event-log.collapsed { height: auto; }
+#event-log.collapsed #log-entries { display: none; }
+#event-log.collapsed #log-title { margin-bottom: 0; }
 #log-entries div { color:#5a8a5a; }
 #log-entries .ts { color:var(--text-faint); }
 #controls { display:flex; flex-direction:column; gap:7px; min-width:185px; }
@@ -737,5 +749,56 @@ body, html {
 #btn-slideshow.active {
   border-color: rgba(77,156,248,.5);
   color: var(--accent);
+  background: rgba(77,156,248,.1);
+}
+
+/* Interval input */
+#fav-slide-secs {
+  width: 38px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 11px;
+  font-family: monospace;
+  padding: 3px 4px;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+#fav-slide-secs::-webkit-inner-spin-button,
+#fav-slide-secs::-webkit-outer-spin-button { -webkit-appearance: none; }
+#fav-slide-secs:focus { outline: none; border-color: rgba(77,156,248,.45); }
+.fav-secs-unit { font-size: 10px; color: var(--text-muted); margin-left: -2px; }
+
+/* Per-row slideshow checkbox */
+.fav-slide-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.03);
+  transition: border-color .12s, background .12s;
+  position: relative;
+  title: "In Slideshow";
+}
+.fav-slide-wrap:hover { border-color: rgba(77,156,248,.45); background: rgba(77,156,248,.08); }
+.fav-slide-check { position: absolute; opacity: 0; width: 0; height: 0; }
+.fav-slide-icon::before {
+  content: '▷';
+  font-size: 9px;
+  color: var(--text-faint);
+  transition: color .12s;
+}
+.fav-slide-check:checked ~ .fav-slide-icon::before {
+  content: '▶';
+  color: var(--accent);
+}
+.fav-slide-wrap:has(.fav-slide-check:checked) {
+  border-color: rgba(77,156,248,.4);
   background: rgba(77,156,248,.1);
 }
