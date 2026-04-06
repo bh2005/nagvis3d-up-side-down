@@ -1,0 +1,15 @@
+{
+  "name": "nagvis3d-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test":          "vitest run --reporter=verbose",
+    "test:watch":    "vitest",
+    "test:coverage": "vitest run --coverage --reporter=verbose"
+  },
+  "devDependencies": {
+    "vitest":              "^1.6.0",
+    "@vitest/coverage-v8": "^1.6.0",
+    "jsdom":               "^24.0.0"
+  }
+}
