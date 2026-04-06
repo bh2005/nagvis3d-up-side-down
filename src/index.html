@@ -82,7 +82,14 @@
 
   <div id="bottom-bar">
     <div id="event-log" class="panel">
-      <div id="log-title">SYSTEM LOG</div>
+      <div id="log-title">
+        SYSTEM LOG
+        <button id="btn-log-toggle" title="Ein-/Ausblenden" onclick="
+          const e=document.getElementById('event-log');
+          e.classList.toggle('collapsed');
+          this.textContent=e.classList.contains('collapsed')?'▶':'▼';
+        ">▼</button>
+      </div>
       <div id="log-entries"></div>
     </div>
     <div id="controls" class="panel">
@@ -115,6 +122,8 @@
     <span class="dlg-title">★ <span>Favoriten</span></span>
     <button class="btn btn-sm" id="btn-fav-save">＋ Speichern</button>
     <button class="btn btn-sm" id="btn-slideshow" disabled>▶ Slideshow</button>
+    <input type="number" id="fav-slide-secs" value="4" min="1" max="300" title="Sekunden pro Ansicht">
+    <span class="fav-secs-unit">s</span>
     <span class="dlg-close" id="fav-close">✕</span>
   </div>
   <div id="fav-list"></div>

@@ -166,28 +166,25 @@ export class FavoritesBar {
     this._list     = document.getElementById('fav-list');
     this._favs     = JSON.parse(localStorage.getItem('nv3d_favorites') || '[]');
     this._slide    = null;
-    this._slideIdx = 0;
+    this._slideIdx = 0;   // index within _slideItems()
 
-    document.getElementById('btn-fav-panel')  .addEventListener('click', () => this.toggle());
-    document.getElementById('fav-close')      .addEventListener('click', () => this.close());
-    document.getElementById('btn-fav-save')   .addEventListener('click', () => this.saveView());
-    document.getElementById('btn-slideshow')  .addEventListener('click', () => this.toggleSlideshow());
+    document.getElementById('btn-fav-panel').addEventListener('click', () => this.toggle());
+    document.getElementById('fav-close')    .addEventListener('click', () => this.close());
+    document.getElementById('btn-fav-save') .addEventListener('click', () => this.saveView());
+    document.getElementById('btn-slideshow').addEventListener('click', () => this.toggleSlideshow());
+
+    // Interval änderung während laufender Slideshow → neu starten
+    document.getElementById('fav-slide-secs').addEventListener('change', () => {
+      if (this._slide) { this.stopSlideshow(); this.startSlideshow(); }
+    });
 
     this._render();
   }
 
-  // ── Panel open / close ───────────────────────────────────────
+  // ── Panel ────────────────────────────────────────────────────
   toggle() { this._el.classList.contains('open') ? this.close() : this.open(); }
-
-  open() {
-    this._el.classList.add('open');
-    document.getElementById('btn-fav-panel').classList.add('active');
-  }
-
-  close() {
-    this._el.classList.remove('open');
-    document.getElementById('btn-fav-panel').classList.remove('active');
-  }
+  open()   { this._el.classList.add('open');    document.getElementById('btn-fav-panel').classList.add('active'); }
+  close()  { this._el.classList.remove('open'); document.getElementById('btn-fav-panel').classList.remove('active'); }
 
   // ── Save ─────────────────────────────────────────────────────
   saveView() {
@@ -195,11 +192,12 @@ export class FavoritesBar {
     const ctrl  = this._app.controls;
     const thumb = this._app.renderer.domElement.toDataURL('image/jpeg', 0.45);
     this._favs.push({
-      id:     Date.now(),
-      label:  `View ${this._favs.length + 1}`,
+      id:          Date.now(),
+      label:       `View ${this._favs.length + 1}`,
       thumb,
-      camPos: cam.position.toArray(),
-      target: ctrl.target.toArray(),
+      camPos:      cam.position.toArray(),
+      target:      ctrl.target.toArray(),
+      inSlideshow: true,
     });
     this._save();
     this._render();
@@ -215,10 +213,12 @@ export class FavoritesBar {
     this._app.controls.update();
   }
 
-  gotoIdx(idx) {
-    if (!this._favs.length) return;
-    this._slideIdx = ((idx % this._favs.length) + this._favs.length) % this._favs.length;
-    this.gotoFav(this._favs[this._slideIdx].id);
+  // Springt zum idx-ten Eintrag der gefilterten Slideshow-Liste
+  gotoSlideIdx(idx) {
+    const items = this._slideItems();
+    if (!items.length) { this.stopSlideshow(); return; }
+    this._slideIdx = ((idx % items.length) + items.length) % items.length;
+    this.gotoFav(items[this._slideIdx].id);
     this._highlightActive();
   }
 
@@ -239,13 +239,20 @@ export class FavoritesBar {
   }
 
   // ── Slideshow ────────────────────────────────────────────────
+  _slideItems() { return this._favs.filter(f => f.inSlideshow !== false); }
+
+  _slideInterval() {
+    const v = parseInt(document.getElementById('fav-slide-secs').value, 10);
+    return Math.max(1, isNaN(v) ? 4 : v) * 1000;
+  }
+
   toggleSlideshow() { this._slide ? this.stopSlideshow() : this.startSlideshow(); }
 
   startSlideshow() {
-    if (this._favs.length < 2) return;
+    if (this._slideItems().length < 2) return;
     this._slideIdx = 0;
-    this.gotoIdx(0);
-    this._slide = setInterval(() => this.gotoIdx(this._slideIdx + 1), 4000);
+    this.gotoSlideIdx(0);
+    this._slide = setInterval(() => this.gotoSlideIdx(this._slideIdx + 1), this._slideInterval());
     const btn = document.getElementById('btn-slideshow');
     btn.classList.add('active');
     btn.textContent = '⏹ Stop';
@@ -262,8 +269,10 @@ export class FavoritesBar {
 
   // ── Internal ─────────────────────────────────────────────────
   _highlightActive() {
-    this._list.querySelectorAll('.fav-row').forEach((row, i) => {
-      row.classList.toggle('fav-active', i === this._slideIdx);
+    const items    = this._slideItems();
+    const activeId = items[this._slideIdx]?.id;
+    this._list.querySelectorAll('.fav-row').forEach(row => {
+      row.classList.toggle('fav-active', Number(row.dataset.id) === activeId);
     });
   }
 
@@ -280,15 +289,23 @@ export class FavoritesBar {
       return;
     }
 
-    ssBtn.disabled = this._favs.length < 2;
+    this._updateSsBtn();
 
-    this._favs.forEach((fav, idx) => {
+    this._favs.forEach(fav => {
+      // inSlideshow rückwärtskompatibel: undefined → true
+      if (fav.inSlideshow === undefined) fav.inSlideshow = true;
+
       const row = document.createElement('div');
-      row.className = 'fav-row';
-      row.innerHTML = `
+      row.className  = 'fav-row';
+      row.dataset.id = fav.id;
+      row.innerHTML  = `
         <img src="${fav.thumb}" class="fav-row-thumb" alt="" title="Ansicht laden">
         <input class="fav-row-label" value="${fav.label.replace(/"/g, '&quot;')}"
                spellcheck="false" title="Klicken zum Umbenennen">
+        <label class="fav-slide-wrap" title="In Slideshow einschließen">
+          <input type="checkbox" class="fav-slide-check" ${fav.inSlideshow ? 'checked' : ''}>
+          <span class="fav-slide-icon"></span>
+        </label>
         <div class="fav-row-btns">
           <button class="btn btn-sm fav-goto" title="Ansicht laden">↗</button>
           <button class="btn btn-sm fav-del"  title="Löschen">✕</button>
@@ -300,7 +317,16 @@ export class FavoritesBar {
       input.addEventListener('blur',    () => this.renameFav(fav.id, input.value));
       input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); e.stopPropagation(); });
 
-      const jump = () => { this._slideIdx = idx; this.gotoFav(fav.id); this._highlightActive(); };
+      const check = row.querySelector('.fav-slide-check');
+      check.addEventListener('change', () => {
+        fav.inSlideshow = check.checked;
+        this._save();
+        this._updateSsBtn();
+        // läuft Slideshow und zu wenige Einträge → stoppen
+        if (this._slide && this._slideItems().length < 2) this.stopSlideshow();
+      });
+
+      const jump = () => { this.gotoFav(fav.id); this._highlightActive(); };
       row.querySelector('.fav-row-thumb').addEventListener('click', jump);
       row.querySelector('.fav-goto')     .addEventListener('click', jump);
       row.querySelector('.fav-del')      .addEventListener('click', e => { e.stopPropagation(); this.deleteFav(fav.id); });
@@ -309,6 +335,10 @@ export class FavoritesBar {
     });
 
     if (this._slide) this._highlightActive();
+  }
+
+  _updateSsBtn() {
+    document.getElementById('btn-slideshow').disabled = this._slideItems().length < 2;
   }
 }
 
