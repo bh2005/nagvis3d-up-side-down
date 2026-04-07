@@ -78,8 +78,17 @@ body, html {
   border-color: var(--accent); background: rgba(77,156,248,.08);
 }
 #search-input::placeholder { color: var(--text-faint); }
+.btn-search-filter {
+  margin-left: 4px; padding: 2px 5px;
+  font-size: 12px; line-height: 1;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10);
+  border-radius: 4px; color: var(--text-faint); cursor: pointer;
+  transition: all .15s; flex-shrink: 0;
+}
+.btn-search-filter:hover { color: var(--text); border-color: rgba(255,255,255,.25); }
+.btn-search-filter.active { background: rgba(77,156,248,.2); border-color: var(--accent); color: var(--accent); }
 #search-count {
-  position: absolute; right: 7px;
+  position: absolute; right: 38px;
   font-size: 10px; font-family: monospace; color: var(--accent);
   pointer-events: none;
 }
