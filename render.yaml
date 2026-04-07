@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: nagvis3d
+    runtime: static
+    staticPublishPath: src
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
