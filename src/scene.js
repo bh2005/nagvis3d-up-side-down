@@ -1119,6 +1119,23 @@ export class NV2Map3D {
     document.getElementById('btn-search-filter')?.classList.toggle('active', this._keepFilter);
   }
 
+  toggleTheme() {
+    const isLight = document.body.dataset.theme !== 'light';
+    document.body.dataset.theme = isLight ? 'light' : 'dark';
+    localStorage.setItem('nv3d-theme', isLight ? 'light' : 'dark');
+    document.getElementById('btn-theme').textContent = isLight ? '🌙' : '☀';
+    this._applyTheme3D(isLight);
+  }
+
+  _applyTheme3D(light) {
+    if (light) {
+      this.scene.fog = new THREE.FogExp2(0xc8cedc, 0.004);
+    } else {
+      this.scene.fog = new THREE.FogExp2(0x080a0e, 0.003);
+      if (this._cockpitMode) this.scene.fog = new THREE.FogExp2(0x0d0005, 0.0018);
+    }
+  }
+
   _highlightSearch(q) {
     this._clearSearch(false);
     let firstMatchId = null;
