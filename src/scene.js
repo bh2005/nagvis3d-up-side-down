@@ -1114,6 +1114,11 @@ export class NV2Map3D {
     this._highlightSearch(q.trim().toLowerCase());
   }
 
+  toggleSearchFilter() {
+    this._keepFilter = !this._keepFilter;
+    document.getElementById('btn-search-filter')?.classList.toggle('active', this._keepFilter);
+  }
+
   _highlightSearch(q) {
     this._clearSearch(false);
     let firstMatchId = null;
@@ -1207,6 +1212,11 @@ export class NV2Map3D {
         e.preventDefault();
         this.focusNode(item.id);
         dd.style.display = 'none';
+        if (!this._keepFilter) {
+          const input = document.getElementById('search-input');
+          if (input) input.value = '';
+          this._clearSearch(true);
+        }
       });
       dd.appendChild(row);
     });
@@ -1232,7 +1242,16 @@ export class NV2Map3D {
       rows[idx - 1].style.background = 'rgba(77,156,248,.28)';
     } else if (e.key === 'Enter') {
       const active = rows.find(r => r.style.background !== '') ?? rows[0];
-      if (active) { e.preventDefault(); this.focusNode(active.dataset.id); dd.style.display = 'none'; }
+      if (active) {
+        e.preventDefault();
+        this.focusNode(active.dataset.id);
+        dd.style.display = 'none';
+        if (!this._keepFilter) {
+          const input = document.getElementById('search-input');
+          if (input) input.value = '';
+          this._clearSearch(true);
+        }
+      }
     }
   }
 
