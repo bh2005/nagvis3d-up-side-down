@@ -1116,8 +1116,8 @@ export class NV2Map3D {
 
   _highlightSearch(q) {
     this._clearSearch(false);
-    let matches = 0;
     let firstMatchId = null;
+    const matchedNodes = [];
 
     Object.entries(this.nodeObjects).forEach(([id, group]) => {
       const node    = this.data.nodes.find(n => n.id === id);
@@ -1131,14 +1131,11 @@ export class NV2Map3D {
       const labelEl = group.children.find(c => c.isCSS2DObject)?.element;
 
       if (isMatch) {
-        matches++;
+        matchedNodes.push({ id, label: node.label ?? id, floor: node.floor, status: group.userData.status ?? node.status });
         if (!firstMatchId) firstMatchId = id;
-        if (mesh) {
-          mesh.material.emissiveIntensity = 0.9;
-        }
+        if (mesh) mesh.material.emissiveIntensity = 0.9;
         if (labelEl) { labelEl.style.opacity = '1'; labelEl.style.fontWeight = '700'; }
 
-        // Blue highlight ring
         const ring = new THREE.Mesh(
           new THREE.RingGeometry(3.8, 5.0, 40),
           new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false })
@@ -1159,10 +1156,84 @@ export class NV2Map3D {
       }
     });
 
+    const count = matchedNodes.length;
     const el = document.getElementById('search-count');
-    if (el) el.textContent = matches ? `${matches}` : '–';
+    if (el) el.textContent = count ? `${count}` : '–';
 
-    if (matches === 1 && firstMatchId) this.focusNode(firstMatchId);
+    this._buildDropdown(matchedNodes);
+
+    if (count === 1 && firstMatchId) this.focusNode(firstMatchId);
+  }
+
+  _buildDropdown(items) {
+    let dd = document.getElementById('search-dropdown');
+    if (!dd) {
+      dd = document.createElement('div');
+      dd.id = 'search-dropdown';
+      dd.style.cssText = 'display:none;position:fixed;z-index:9999;background:#1a1e2a;border:1px solid rgba(255,255,255,.15);border-radius:5px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,.6);';
+      document.body.appendChild(dd);
+    }
+    while (dd.firstChild) dd.removeChild(dd.firstChild);
+    if (!items.length) { dd.style.display = 'none'; return; }
+
+    const input = document.getElementById('search-input');
+    const rect  = input.getBoundingClientRect();
+    dd.style.top   = (rect.bottom + 4) + 'px';
+    dd.style.left  = rect.left + 'px';
+    dd.style.width = Math.max(rect.width, 220) + 'px';
+
+    items.slice(0, 10).forEach(item => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:5px 9px;cursor:pointer;font-size:11px;color:#c8cee0;font-family:monospace;';
+      row.dataset.id = item.id;
+      const cfg = S(item.status ?? 'unknown');
+      const badge = document.createElement('span');
+      badge.textContent = cfg.label;
+      badge.style.cssText = `font-size:9px;padding:1px 5px;border-radius:3px;flex-shrink:0;background:${cfg.hex ? '#'+cfg.hex.toString(16).padStart(6,'0')+'33' : '#333'};color:#${cfg.hex ? cfg.hex.toString(16).padStart(6,'0') : 'aaa'};border:1px solid #${cfg.hex ? cfg.hex.toString(16).padStart(6,'0')+'66' : '555'};`;
+      const lbl = document.createElement('span');
+      lbl.textContent = item.label;
+      lbl.style.cssText = 'flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+      row.appendChild(badge);
+      row.appendChild(lbl);
+      if (item.floor) {
+        const fl = document.createElement('span');
+        fl.textContent = item.floor;
+        fl.style.cssText = 'color:#666;font-size:10px;flex-shrink:0;';
+        row.appendChild(fl);
+      }
+      row.addEventListener('mouseover', () => { row.style.background = 'rgba(77,156,248,.18)'; });
+      row.addEventListener('mouseout',  () => { row.style.background = ''; });
+      row.addEventListener('mousedown', e => {
+        e.preventDefault();
+        this.focusNode(item.id);
+        dd.style.display = 'none';
+      });
+      dd.appendChild(row);
+    });
+    dd.style.display = 'block';
+  }
+
+  _searchKeydown(e) {
+    const dd    = document.getElementById('search-dropdown');
+    const input = document.getElementById('search-input');
+    if (e.key === 'Escape') { this.clearSearch(); input.value = ''; return; }
+    if (!dd || dd.style.display === 'none') return;
+    const rows = [...dd.querySelectorAll('[data-id]')];
+    if (!rows.length) return;
+    const idx = rows.findIndex(r => r.style.background !== '');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      rows.forEach(r => r.style.background = '');
+      rows[Math.min(idx + 1, rows.length - 1)].style.background = 'rgba(77,156,248,.28)';
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      rows.forEach(r => r.style.background = '');
+      if (idx <= 0) return;
+      rows[idx - 1].style.background = 'rgba(77,156,248,.28)';
+    } else if (e.key === 'Enter') {
+      const active = rows.find(r => r.style.background !== '') ?? rows[0];
+      if (active) { e.preventDefault(); this.focusNode(active.dataset.id); dd.style.display = 'none'; }
+    }
   }
 
   _clearSearch(restore = true) {
@@ -1170,6 +1241,8 @@ export class NV2Map3D {
     this._searchRings = [];
     const el = document.getElementById('search-count');
     if (el) el.textContent = '';
+    const dd = document.getElementById('search-dropdown');
+    if (dd) dd.style.display = 'none';
     if (!restore) return;
     Object.entries(this.nodeObjects).forEach(([id, group]) => {
       const node = this.data.nodes.find(n => n.id === id);

@@ -17,6 +17,15 @@ import { Minimap, ProblemList, ModelDialog, MapOverlay, FavoritesBar } from './p
   try { window._favorites = new FavoritesBar(window.app); } catch(e) { console.error('FavoritesBar init:', e); }
 
   document.getElementById('btn-model-name').textContent = initialModel.name;
+
+  // Dropdown schließen bei Klick außerhalb
+  document.addEventListener('mousedown', e => {
+    const dd    = document.getElementById('search-dropdown');
+    const input = document.getElementById('search-input');
+    if (dd && dd.style.display !== 'none' && !dd.contains(e.target) && e.target !== input)
+      dd.style.display = 'none';
+  });
+
   await window.app.loadModel(initialModel);
   window.mapOverlay.open(); // beim Start direkt anzeigen
 
