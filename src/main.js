@@ -16,6 +16,14 @@ import { Minimap, ProblemList, ModelDialog, MapOverlay, FavoritesBar } from './p
   try { window._minimap    = new Minimap(window.app); } catch(e) { console.error('Minimap init:', e); }
   try { window._favorites = new FavoritesBar(window.app); } catch(e) { console.error('FavoritesBar init:', e); }
 
+  // Theme aus localStorage wiederherstellen
+  const savedTheme = localStorage.getItem('nv3d-theme');
+  if (savedTheme === 'light') {
+    document.body.dataset.theme = 'light';
+    document.getElementById('btn-theme').textContent = '🌙';
+    window.app._applyTheme3D(true);
+  }
+
   document.getElementById('btn-model-name').textContent = initialModel.name;
 
   // Dropdown schließen bei Klick außerhalb
