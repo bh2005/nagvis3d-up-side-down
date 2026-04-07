@@ -1661,8 +1661,8 @@ class NV2Map3D {
 
   _highlightSearch(q) {
     this._clearSearch(false);
-    let matches = 0;
     let firstMatchId = null;
+    const matchedNodes = [];
 
     Object.entries(this.nodeObjects).forEach(([id, group]) => {
       const node    = this.data.nodes.find(n => n.id === id);
@@ -1676,14 +1676,11 @@ class NV2Map3D {
       const labelEl = group.children.find(c => c.isCSS2DObject)?.element;
 
       if (isMatch) {
-        matches++;
+        matchedNodes.push({ id, label: node.label ?? id, floor: node.floor, status: group.userData.status ?? node.status });
         if (!firstMatchId) firstMatchId = id;
-        if (mesh) {
-          mesh.material.emissiveIntensity = 0.9;
-        }
+        if (mesh) mesh.material.emissiveIntensity = 0.9;
         if (labelEl) { labelEl.style.opacity = '1'; labelEl.style.fontWeight = '700'; }
 
-        // Blue highlight ring
         const ring = new THREE.Mesh(
           new THREE.RingGeometry(3.8, 5.0, 40),
           new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false })
@@ -1704,10 +1701,88 @@ class NV2Map3D {
       }
     });
 
+    const count = matchedNodes.length;
     const el = document.getElementById('search-count');
-    if (el) el.textContent = matches ? `${matches}` : '–';
+    if (el) el.textContent = count ? `${count}` : '–';
 
-    if (matches === 1 && firstMatchId) this.focusNode(firstMatchId);
+    this._buildDropdown(matchedNodes);
+
+    if (count === 1 && firstMatchId) this.focusNode(firstMatchId);
+  }
+
+  _getOrCreateDropdown() {
+    let dd = document.getElementById('search-dropdown');
+    if (!dd) {
+      dd = document.createElement('div');
+      dd.id = 'search-dropdown';
+      dd.style.display = 'none';
+      document.body.appendChild(dd);
+    }
+    return dd;
+  }
+
+  _hideDropdown() {
+    const dd = document.getElementById('search-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
+
+  _buildDropdown(items) {
+    const dd    = this._getOrCreateDropdown();
+    const input = document.getElementById('search-input');
+    dd.innerHTML = '';
+    if (!items.length) { dd.style.display = 'none'; return; }
+
+    // Position unterhalb des Inputs (fixed)
+    const rect = input.getBoundingClientRect();
+    dd.style.top   = (rect.bottom + 4) + 'px';
+    dd.style.left  = rect.left + 'px';
+    dd.style.width = Math.max(rect.width, 220) + 'px';
+
+    items.slice(0, 10).forEach(({ id, label, floor, status }) => {
+      const cfg = S(status ?? 'unknown');
+      const row = document.createElement('div');
+      row.className  = 'sdi';
+      row.dataset.id = id;
+      row.innerHTML  = `<span class="s-badge ${cfg.badge}" style="font-size:9px;padding:1px 4px;flex-shrink:0">${cfg.label}</span><span class="sdi-label">${label}</span>${floor ? `<span class="sdi-floor">${floor}</span>` : ''}`;
+      row.addEventListener('mousedown', e => {
+        e.preventDefault();
+        this.focusNode(id);
+        this._hideDropdown();
+      });
+      dd.appendChild(row);
+    });
+    dd.style.display = 'block';
+  }
+
+  _searchKeydown(e) {
+    const dd    = this._getOrCreateDropdown();
+    const input = document.getElementById('search-input');
+    if (e.key === 'Escape') {
+      this.clearSearch(); input.value = ''; return;
+    }
+    if (!dd || dd.style.display === 'none') return;
+    const rows = [...dd.querySelectorAll('.sdi')];
+    if (!rows.length) return;
+    const active = dd.querySelector('.sdi.active');
+    const idx    = rows.indexOf(active);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      rows[idx + 1]?.classList.add('active');
+      active?.classList.remove('active');
+      if (idx === -1) rows[0].classList.add('active');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (idx <= 0) { active?.classList.remove('active'); input.focus(); return; }
+      rows[idx - 1]?.classList.add('active');
+      active?.classList.remove('active');
+    } else if (e.key === 'Enter') {
+      const current = dd.querySelector('.sdi.active') ?? rows[0];
+      if (current) {
+        e.preventDefault();
+        this.focusNode(current.dataset.id);
+        dd.style.display = 'none';
+      }
+    }
   }
 
   _clearSearch(restore = true) {
@@ -1715,6 +1790,8 @@ class NV2Map3D {
     this._searchRings = [];
     const el = document.getElementById('search-count');
     if (el) el.textContent = '';
+    const dd = this._getOrCreateDropdown();
+    dd.innerHTML = ''; dd.style.display = 'none';
     if (!restore) return;
     Object.entries(this.nodeObjects).forEach(([id, group]) => {
       const node = this.data.nodes.find(n => n.id === id);
@@ -2482,6 +2559,23 @@ class MapOverlay {
   try { window._minimap = new Minimap(window.app); } catch(e) { console.error('Minimap init:', e); }
 
   document.getElementById('btn-model-name').textContent = initialModel.name;
+
+  // Dropdown schließen wenn Fokus den Search-Bereich verlässt
+  document.getElementById('search-input')?.addEventListener('blur', () => {
+    setTimeout(() => {
+      const dd = document.getElementById('search-dropdown');
+      if (dd && !dd.contains(document.activeElement)) dd.style.display = 'none';
+    }, 150);
+  });
+  // Dropdown schließen bei Klick außerhalb
+  document.addEventListener('mousedown', e => {
+    const dd    = document.getElementById('search-dropdown');
+    const input = document.getElementById('search-input');
+    if (dd && dd.style.display !== 'none' && !dd.contains(e.target) && e.target !== input) {
+      dd.style.display = 'none';
+    }
+  });
+
   await window.app.loadModel(initialModel);
   window.mapOverlay.open(); // beim Start direkt anzeigen
 

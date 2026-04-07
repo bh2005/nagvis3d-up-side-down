@@ -44,7 +44,7 @@
       <input id="search-input" type="text" placeholder="Host suchen… (Ctrl+F)"
              autocomplete="off" spellcheck="false"
              oninput="app.search(this.value)"
-             onkeydown="if(event.key==='Escape'){app.clearSearch();this.value='';}">
+             onkeydown="app._searchKeydown(event)">
       <span id="search-count"></span>
     </div>
 
