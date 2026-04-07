@@ -19,6 +19,32 @@ export class Minimap {
     // Klick auf Canvas → nächsten Node suchen + Kamera dorthin
     this._canvas.addEventListener('click', (e) => this._onCanvasClick(e));
     this._canvas.addEventListener('mousemove', (e) => this._onCanvasHover(e));
+
+    this._makeDraggable();
+  }
+
+  _makeDraggable() {
+    const hdr = this._el.querySelector('.minimap-hdr');
+    hdr.style.cursor = 'move';
+    let ox = 0, oy = 0;
+    const onMove = e => {
+      this._el.style.right  = 'auto';
+      this._el.style.bottom = 'auto';
+      this._el.style.left   = (e.clientX - ox) + 'px';
+      this._el.style.top    = (e.clientY - oy) + 'px';
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+    };
+    hdr.addEventListener('mousedown', e => {
+      if (e.target.id === 'minimap-close') return;
+      const rect = this._el.getBoundingClientRect();
+      ox = e.clientX - rect.left;
+      oy = e.clientY - rect.top;
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup',   onUp);
+    });
   }
 
   _canvasCoords(e) {
@@ -195,6 +221,7 @@ export class FavoritesBar {
       id:          Date.now(),
       label:       `View ${this._favs.length + 1}`,
       thumb,
+      modelId:     this._app._model?.id,
       camPos:      cam.position.toArray(),
       target:      ctrl.target.toArray(),
       inSlideshow: true,
@@ -205,20 +232,25 @@ export class FavoritesBar {
   }
 
   // ── Navigate ─────────────────────────────────────────────────
-  gotoFav(id) {
+  async gotoFav(id) {
     const fav = this._favs.find(f => f.id === id);
     if (!fav) return;
+    // Modell wechseln falls nötig (rückwärtskompatibel: alte Favs ohne modelId)
+    if (fav.modelId && fav.modelId !== this._app._model?.id) {
+      const cfg = ModelManager.getById(fav.modelId);
+      if (cfg) await this._app.loadModel(cfg);
+    }
     this._app.camera.position.fromArray(fav.camPos);
     this._app.controls.target.fromArray(fav.target);
     this._app.controls.update();
   }
 
   // Springt zum idx-ten Eintrag der gefilterten Slideshow-Liste
-  gotoSlideIdx(idx) {
+  async gotoSlideIdx(idx) {
     const items = this._slideItems();
     if (!items.length) { this.stopSlideshow(); return; }
     this._slideIdx = ((idx % items.length) + items.length) % items.length;
-    this.gotoFav(items[this._slideIdx].id);
+    await this.gotoFav(items[this._slideIdx].id);
     this._highlightActive();
   }
 
@@ -255,7 +287,7 @@ export class FavoritesBar {
     if (this._app.autoOrbit) this._app._setAutoOrbit(false);
     this._slideIdx = 0;
     this.gotoSlideIdx(0);
-    this._slide = setInterval(() => this.gotoSlideIdx(this._slideIdx + 1), this._slideInterval());
+    this._slide = setInterval(async () => { await this.gotoSlideIdx(this._slideIdx + 1); }, this._slideInterval());
     const btn = document.getElementById('btn-slideshow');
     btn.classList.add('active');
     btn.textContent = '⏹ Stop';
