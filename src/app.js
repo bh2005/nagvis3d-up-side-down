@@ -1,3 +1,9 @@
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  DEAD CODE — this file is the original monolith, superseded by:         ║
+// ║    scene.js  ·  data.js  ·  panels.js                                   ║
+// ║  Nothing imports or references app.js. Safe to delete.                  ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
 import * as THREE        from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer,
