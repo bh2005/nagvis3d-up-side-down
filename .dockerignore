@@ -1,0 +1,23 @@
+# Entwickler-Artefakte
+node_modules/
+.git/
+.github/
+
+# Testdateien (nicht im Image)
+tests/
+
+# Dokumentation + Screenshots
+*.md
+*.png
+*.jpg
+ideas.md
+
+# Konfigurationsdateien (nicht im Image)
+docker/
+render.yaml
+vitest.config.js
+package.json
+package-lock.json
+
+# Source-Backup (Dead-Code)
+src/app.js
