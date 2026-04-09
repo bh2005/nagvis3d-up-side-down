@@ -13,7 +13,6 @@ tests/
 ideas.md
 
 # Konfigurationsdateien (nicht im Image)
-docker/
 render.yaml
 vitest.config.js
 package.json
