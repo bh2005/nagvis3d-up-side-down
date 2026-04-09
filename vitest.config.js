@@ -13,6 +13,9 @@ export default defineConfig({
       exclude: [
         'src/app.js',          // Dead-Code – altes Monolith
         'src/index.html',
+        'src/main.js',         // Three.js/WebGL – nicht testbar in jsdom
+        'src/scene.js',        // Three.js/WebGL – nicht testbar in jsdom
+        'src/panels.js',       // Three.js/DOM – nicht testbar in jsdom
       ],
       thresholds: {
         lines:     60,
