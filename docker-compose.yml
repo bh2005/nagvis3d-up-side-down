@@ -1,0 +1,13 @@
+services:
+
+  nagvis3d:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nagvis3d
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    # Für lokale Entwicklung: Dateien live mounten (kein Rebuild nötig)
+    # volumes:
+    #   - ./src:/usr/share/nginx/html:ro

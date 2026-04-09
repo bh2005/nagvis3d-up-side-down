@@ -1,15 +1,19 @@
 {
-  "name": "nagvis3d-tests",
+  "name": "nagvis3d",
+  "version": "0.1.0",
+  "description": "NagVis 3D – Three.js-basierte 3D-Netzwerkkarte",
   "private": true,
   "type": "module",
   "scripts": {
     "test":          "vitest run --reporter=verbose",
     "test:watch":    "vitest",
-    "test:coverage": "vitest run --coverage --reporter=verbose"
+    "test:coverage": "vitest run --coverage --reporter=verbose",
+    "test:ui":       "vitest --ui"
   },
   "devDependencies": {
-    "vitest":              "^1.6.0",
-    "@vitest/coverage-v8": "^1.6.0",
-    "jsdom":               "^24.0.0"
+    "vitest":              "^2.1.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "@vitest/ui":          "^2.1.0",
+    "jsdom":               "^25.0.0"
   }
 }
