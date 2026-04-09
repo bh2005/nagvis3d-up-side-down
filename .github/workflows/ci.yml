@@ -8,6 +8,10 @@ on:
       - "tests/**"
       - "vitest.config.js"
       - "package.json"
+      - "package-lock.json"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "docker/**"
       - ".github/workflows/ci.yml"
   pull_request:
     branches: [main, develop]
@@ -31,11 +35,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-${{ hashFiles('package.json') }}
+          key: npm-${{ hashFiles('package-lock.json') }}
           restore-keys: npm-
 
       - name: Abhängigkeiten installieren
-        run: npm install
+        run: npm ci
 
       - name: Tests + Coverage
         run: npm run test:coverage
