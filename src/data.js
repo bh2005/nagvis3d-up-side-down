@@ -174,7 +174,12 @@ export function buildFloors(cfg) {
 // ─────────────────────────────────────────────────────────────
 //  MODEL MANAGER
 // ─────────────────────────────────────────────────────────────
-const LS_KEY = 'nv2_3d_models_v1';
+const LS_KEY = 'nv3d_models_v1';
+// migrate old key (renamed from nv2_3d_models_v1 → nv3d_models_v1)
+if (!localStorage.getItem(LS_KEY) && localStorage.getItem('nv2_3d_models_v1')) {
+  localStorage.setItem(LS_KEY, localStorage.getItem('nv2_3d_models_v1'));
+  localStorage.removeItem('nv2_3d_models_v1');
+}
 export const ModelManager = {
   _cache:          new Map(),
   _user()          { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; } },

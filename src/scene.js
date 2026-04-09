@@ -1122,7 +1122,7 @@ export class NV2Map3D {
   toggleTheme() {
     const isLight = document.body.dataset.theme !== 'light';
     document.body.dataset.theme = isLight ? 'light' : 'dark';
-    localStorage.setItem('nv3d-theme', isLight ? 'light' : 'dark');
+    localStorage.setItem('nv3d_theme', isLight ? 'light' : 'dark');
     document.getElementById('btn-theme').textContent = isLight ? '🌙' : '☀';
     this._applyTheme3D(isLight);
   }

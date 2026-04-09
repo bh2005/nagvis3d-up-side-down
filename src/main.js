@@ -17,7 +17,12 @@ import { Minimap, ProblemList, ModelDialog, MapOverlay, FavoritesBar } from './p
   try { window._favorites = new FavoritesBar(window.app); } catch(e) { console.error('FavoritesBar init:', e); }
 
   // Theme aus localStorage wiederherstellen
-  const savedTheme = localStorage.getItem('nv3d-theme');
+  // migrate old theme key (nv3d-theme → nv3d_theme)
+  if (!localStorage.getItem('nv3d_theme') && localStorage.getItem('nv3d-theme')) {
+    localStorage.setItem('nv3d_theme', localStorage.getItem('nv3d-theme'));
+    localStorage.removeItem('nv3d-theme');
+  }
+  const savedTheme = localStorage.getItem('nv3d_theme');
   if (savedTheme === 'light') {
     document.body.dataset.theme = 'light';
     document.getElementById('btn-theme').textContent = '🌙';
