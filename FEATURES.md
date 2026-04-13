@@ -83,6 +83,7 @@
 |---|---------|---------|--------|
 | P1.1 | **Livestatus / NagVis2 Backend-Bridge** – FastAPI WebSocket-Service; liefert Daten aus NagVis2-Connector-Registry an den 3D-Client | 6–8 Tage | 🔲 |
 | P1.2 | **Objekt-Mapping** – automatisches Zuordnen von Nagios-Hosts/Services zu 3D-Nodes (Koordinaten, Floor, Etage); JSON-Mapping-Datei pro Map | 4–6 Tage | 🔲 |
+| P1.2a | **Add-Hosts-UI** – Dialog zum Hinzufügen / Entfernen von Hosts aus der 3D-Szene; Suche über NagVis2-Host-Liste (`GET /api/v1/hosts`); Zuweisung zu Floor + Node-Typ; Speichern im Mapping via `POST /api/3d/{model_id}/mapping` | 3–4 Tage | 🔲 |
 | P1.3 | **Shared Authentication** – JWT / Session-Sharing; Nutzer meldet sich einmal in NagVis2 an, 3D-View übernimmt Token automatisch | 3–5 Tage | 🔲 |
 | P1.4 | **3D-Gadget-Typ in NagVis2** – neuer Gadget-Renderer (`gadget-renderer.js`); 3D-Map als Gadget in normalen 2D-Maps einbettbar (ähnlich Graph/Iframe-Gadget) | 4–6 Tage | 🔲 |
 
@@ -93,7 +94,12 @@
 | # | Aufgabe | Aufwand | Status |
 |---|---------|---------|--------|
 | P2.1 | **Embed-Modus + URL-Parameter** – `?map=xyz&floor=2&highlight=host-abc`; Deep-Linking; Einbettung via Iframe oder Modal | 3–4 Tage | 🔲 |
-| P2.2 | **Bidirektionale Commands** – ACK, Downtime, Comment direkt aus der 3D-Ansicht; PATCH an NagVis2 REST API | 4–6 Tage | 🔲 |
+| P2.2 | **Bidirektionale Commands** – Kontextmenü (Rechtsklick auf Node) mit folgenden Aktionen direkt aus der 3D-Ansicht: | 5–8 Tage | 🔲 |
+|      | • **ACK (Problem bestätigen)** – Dialog mit Pflichtfeld „Grund"; `POST /api/v1/hosts/{host}/ack` bzw. Service-ACK; Node-Badge wechselt auf ✔ | | |
+|      | • **Downtime planen** – Dialog mit Start/Ende + Grund; `POST /api/v1/hosts/{host}/downtime`; Node zeigt 🔧-Overlay | | |
+|      | • **Link zur Datenquelle** – „In Checkmk öffnen"-Eintrag; baut URL aus Backend-Konfiguration (`checkmk_url/{site}/check_mk/index.py?...`); öffnet neuen Tab | | |
+|      | • **Reschedule Check** – sofortiger Re-Check via `POST /api/v1/hosts/{host}/reschedule` | | |
+|      | • **Service-Liste** – Aufklapper im Inspector zeigt alle Services des Hosts mit Status-Badges | | |
 | P2.3 | **Map-spezifische 3D-Konfiguration** – pro NagVis2-Map eine `3d-config.json`; Modelle, Kamera-Startposition, Floor-Zuordnung | 4–5 Tage | 🔲 |
 | P2.4 | **„Open in 3D"-Button** in NagVis2 – Toolbar-Button + Rechtsklick-Kontextmenü-Eintrag; öffnet volle 3D-Ansicht | 2–3 Tage | 🔲 |
 
