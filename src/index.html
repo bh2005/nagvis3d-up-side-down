@@ -36,7 +36,7 @@
     <div id="view-badge">
       <span>2D ·</span>
       <span class="vb-floor" id="vb-floor-name">–</span>
-      <button class="btn btn-back3d" style="padding:2px 8px;font-size:10px" onclick="app.exit2D()">← 3D</button>
+      <button class="btn btn-back3d" onclick="app.exit2D()">← 3D</button>
     </div>
 
     <!-- Search -->
@@ -67,19 +67,19 @@
       <!-- WS connect button + status dot -->
       <button class="btn" onclick="openWsDialog()" title="WebSocket-Verbindung konfigurieren">WS <span id="ws-conn-dot" class="conn-dot" data-state="off"></span></button>
       <!-- Info page -->
-      <a href="info.html" class="btn" title="Datenreferenz &amp; Doku" style="text-decoration:none">?</a>
+      <a href="info.html" class="btn" title="Datenreferenz &amp; Doku">?</a>
 
       <!-- Model selector -->
       <button class="btn" id="btn-model-selector" onclick="modelDialog.open()">
-        <span id="btn-model-name">–</span> <span style="opacity:.45;font-size:9px">▾</span>
+        <span id="btn-model-name">–</span> <span class="model-selector-arrow">▾</span>
       </button>
 
       <div id="legend">
-        <div class="leg"><div class="leg-dot" style="background:var(--ok);  box-shadow:0 0 5px var(--ok)"></div>OK</div>
-        <div class="leg"><div class="leg-dot" style="background:var(--warn);box-shadow:0 0 5px var(--warn)"></div>WARN</div>
-        <div class="leg"><div class="leg-dot" style="background:var(--crit);box-shadow:0 0 5px var(--crit)"></div>CRIT</div>
-        <div class="leg"><div class="leg-dot" style="background:var(--down);box-shadow:0 0 5px var(--down)"></div>DOWN</div>
-        <div class="leg"><div class="leg-dot" style="background:var(--unkn)"></div>UNKN</div>
+        <div class="leg"><div class="leg-dot leg-dot-ok"></div>OK</div>
+        <div class="leg"><div class="leg-dot leg-dot-warn"></div>WARN</div>
+        <div class="leg"><div class="leg-dot leg-dot-crit"></div>CRIT</div>
+        <div class="leg"><div class="leg-dot leg-dot-down"></div>DOWN</div>
+        <div class="leg"><div class="leg-dot leg-dot-unkn"></div>UNKN</div>
       </div>
     </div>
   </div>
@@ -97,12 +97,12 @@
       <div id="log-entries"></div>
     </div>
     <div id="controls" class="panel">
-      <label>FLOW SPEED</label>
-      <input type="range" id="flow-speed" min="0" max="100" value="40">
-      <label>ORBIT RADIUS <span id="orbit-radius-val">90</span></label>
-      <input type="range" id="orbit-radius" min="30" max="250" value="90">
-      <label>SPREIZUNG <span id="explode-val">1.0×</span></label>
-      <input type="range" id="explode-slider" min="100" max="400" value="100">
+      <label for="flow-speed">FLOW SPEED</label>
+      <input type="range" id="flow-speed" min="0" max="100" value="40" aria-label="Flow Speed">
+      <label for="orbit-radius">ORBIT RADIUS <span id="orbit-radius-val">90</span></label>
+      <input type="range" id="orbit-radius" min="30" max="250" value="90" aria-label="Orbit Radius">
+      <label for="explode-slider">SPREIZUNG <span id="explode-val">1.0×</span></label>
+      <input type="range" id="explode-slider" min="100" max="400" value="100" aria-label="Spreizung">
       <div class="btn-row">
         <button class="btn active" id="btn-orbit" onclick="app.toggleOrbit()">Auto-Orbit</button>
         <button class="btn"                        onclick="app.resetCam()">Reset</button>
@@ -138,15 +138,17 @@
 
 <!-- 2D panel: background + opacity (left) -->
 <div id="panel-2d">
-  <div class="panel" style="display:flex;flex-direction:column;gap:7px">
+  <div class="panel">
     <label>GRUNDRISS</label>
     <button class="btn" onclick="document.getElementById('bg-file-input').click()">📁 Bild laden</button>
     <div class="bg-img-name" id="bg-img-name">— kein Bild —</div>
-    <label>BILD-DECKKRAFT</label>
+    <label for="bg-opacity">BILD-DECKKRAFT</label>
     <input type="range" id="bg-opacity" min="0" max="100" value="60"
+           aria-label="Bild-Deckkraft"
            oninput="app.setBgOpacity(this.value / 100)">
-    <label>EBENE-DECKKRAFT</label>
+    <label for="floor-opacity">EBENE-DECKKRAFT</label>
     <input type="range" id="floor-opacity" min="0" max="100" value="30"
+           aria-label="Ebene-Deckkraft"
            oninput="app.setFloorOpacity(this.value / 100)">
   </div>
 </div>
@@ -170,7 +172,7 @@
   </div>
   <div id="ins-body"></div>
   <div id="ins-foot">
-    <button class="btn" style="flex:1" onclick="app.focusActive()">Focus Camera</button>
+    <button class="btn ins-foot-btn" onclick="app.focusActive()">Focus Camera</button>
   </div>
 </div>
 
@@ -211,7 +213,7 @@
       <span class="dlg-close" onclick="mapOverlay.close()">✕</span>
     </div>
     <div id="map-toolbar">
-      <select id="map-site-select"></select>
+      <select id="map-site-select" aria-label="Standort wählen"></select>
       <button id="map-load-btn" class="btn btn-primary" disabled>Modell laden</button>
     </div>
     <div id="leaflet-container"></div>
@@ -235,7 +237,7 @@
     </div>
 
     <!-- ── New model form ─────────────────────────── -->
-    <div id="model-new-section" style="display:none">
+    <div id="model-new-section" class="hidden">
       <div class="dlg-divider"></div>
       <div class="dlg-section-title">Neues Modell anlegen</div>
 
@@ -262,34 +264,34 @@
 
         <div class="form-row-2">
           <div class="form-col">
-            <label class="form-label">Etagen / Sohlen</label>
-            <input class="form-input" type="number" name="floorCount" value="4" min="2" max="20">
+            <label class="form-label" for="f-floorCount">Etagen / Sohlen</label>
+            <input class="form-input" type="number" id="f-floorCount" name="floorCount" value="4" min="2" max="20">
           </div>
           <div class="form-col">
-            <label class="form-label">Höhe pro Etage (m)</label>
-            <input class="form-input" type="number" name="floorHeight" value="3" min="1" max="1000" step="0.5">
-          </div>
-        </div>
-
-        <div class="form-row-2">
-          <div class="form-col">
-            <label class="form-label">Breite (m)</label>
-            <input class="form-input" type="number" name="width" value="110" min="10">
-          </div>
-          <div class="form-col">
-            <label class="form-label">Länge (m)</label>
-            <input class="form-input" type="number" name="length" value="110" min="10">
+            <label class="form-label" for="f-floorHeight">Höhe pro Etage (m)</label>
+            <input class="form-input" type="number" id="f-floorHeight" name="floorHeight" value="3" min="1" max="1000" step="0.5">
           </div>
         </div>
 
         <div class="form-row-2">
           <div class="form-col">
-            <label class="form-label">Breitengrad (lat)</label>
-            <input class="form-input" type="number" name="lat" value="51.5062" step="0.0001">
+            <label class="form-label" for="f-width">Breite (m)</label>
+            <input class="form-input" type="number" id="f-width" name="width" value="110" min="10">
           </div>
           <div class="form-col">
-            <label class="form-label">Längengrad (lon)</label>
-            <input class="form-input" type="number" name="lon" value="9.3327" step="0.0001">
+            <label class="form-label" for="f-length">Länge (m)</label>
+            <input class="form-input" type="number" id="f-length" name="length" value="110" min="10">
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-col">
+            <label class="form-label" for="f-lat">Breitengrad (lat)</label>
+            <input class="form-input" type="number" id="f-lat" name="lat" value="51.5062" step="0.0001">
+          </div>
+          <div class="form-col">
+            <label class="form-label" for="f-lon">Längengrad (lon)</label>
+            <input class="form-input" type="number" id="f-lon" name="lon" value="9.3327" step="0.0001">
           </div>
         </div>
 
@@ -305,7 +307,7 @@
 </div><!-- /model-dialog -->
 
 <!-- hidden file input for bg image -->
-<input type="file" id="bg-file-input" accept="image/*" style="display:none"
+<input type="file" id="bg-file-input" accept="image/*" class="hidden" aria-label="Grundriss-Bild laden"
        onchange="app._onBgFileSelected(this.files[0]); this.value=''">
 
 <script type="module" src="main.js"></script>
