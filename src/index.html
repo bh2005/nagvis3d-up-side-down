@@ -64,6 +64,8 @@
       <button class="btn" id="btn-theme" onclick="app.toggleTheme()" title="Hell/Dunkel-Modus">☀</button>
       <!-- Map overview -->
       <button class="btn" id="btn-map" onclick="mapOverlay.toggle()" title="OSM-Übersichtskarte (M)">🗺</button>
+      <!-- WS connect button + status dot -->
+      <button class="btn" onclick="openWsDialog()" title="WebSocket-Verbindung konfigurieren">WS <span id="ws-conn-dot" class="conn-dot" data-state="off"></span></button>
       <!-- Info page -->
       <a href="info.html" class="btn" title="Datenreferenz &amp; Doku" style="text-decoration:none">?</a>
 
@@ -169,6 +171,26 @@
   <div id="ins-body"></div>
   <div id="ins-foot">
     <button class="btn" style="flex:1" onclick="app.focusActive()">Focus Camera</button>
+  </div>
+</div>
+
+<!-- ═══════════ WS DIALOG ═══════════ -->
+<div id="ws-dialog" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <span class="dlg-title">WebSocket-Verbindung</span>
+      <span class="dlg-close" onclick="closeWsDialog()">✕</span>
+    </div>
+    <div class="modal-body">
+      <label>WebSocket-URL (nagvis2 Backend)</label>
+      <input id="ws-url-input" type="text" placeholder="ws://host:8008/ws/map/my-map">
+      <label>Auth-Token (optional)</label>
+      <input id="ws-token-input" type="password" placeholder="Bearer Token">
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="connectNv3d(document.getElementById('ws-url-input').value, document.getElementById('ws-token-input').value); closeWsDialog()">Verbinden</button>
+        <button type="button" class="btn btn-secondary" onclick="disconnectNv3d(); closeWsDialog()">Trennen</button>
+      </div>
+    </div>
   </div>
 </div>
 

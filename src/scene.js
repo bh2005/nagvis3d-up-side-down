@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer,
          CSS2DObject }   from 'three/addons/renderers/CSS2DRenderer.js';
 
-import { SC, S, al, SCENE_MAX, FLOOR_STEP, TUNNEL_MIN_DIST } from './config.js';
+import { SC, S, al, mapState, SCENE_MAX, FLOOR_STEP, TUNNEL_MIN_DIST } from './config.js';
 import { fmtM, computeGeoLayout, buildFloors, ModelManager } from './data.js';
 
 // ─────────────────────────────────────────────────────────────
@@ -1038,58 +1038,198 @@ export class NV2Map3D {
 
   // ── WS ─────────────────────────────────────────────────────
 
-  updateNodeStatus(hosts) {
+  /** Resolve host entry from nodeObjects by id, name, or label. */
+  _findGroup(h) {
+    const id = h.id ?? h.name;
+    return this.nodeObjects[id]
+      ?? Object.values(this.nodeObjects).find(g => g.userData.label === id)
+      ?? null;
+  }
+
+  /**
+   * Update 3D node status from live monitoring data.
+   * Accepts both nagvis2 format ({state_label, name, output, acknowledged, in_downtime, _backend_id})
+   * and local static format ({id, status}).
+   * Services are aggregated: worst service state per host is overlaid if worse than host state.
+   */
+  updateNodeStatus(hosts, services = []) {
     hosts.forEach(h => {
-      const group = this.nodeObjects[h.id];
+      const group = this._findGroup(h);
       if (!group) return;
-      const mesh = group.children.find(c => c.isMesh);
+      const mesh   = group.children.find(c => c.isMesh);
       if (!mesh) return;
-      const cfg  = S(h.status);
-      const prev = this._prevStatus[h.id];
+      const nodeId = group.userData.id ?? h.id ?? h.name;
+      const status = mapState(h.state_label ?? h.status);
+      const cfg    = S(status);
+      const prev   = this._prevStatus[nodeId];
 
       mesh.material.color.set(cfg.hex);
       mesh.material.emissive.set(cfg.emissive);
-      mesh.material.emissiveIntensity = al(h.status) ? 0.55 : 0.2;
-      group.userData.status = h.status;
-      this._prevStatus[h.id] = h.status;
+      mesh.material.emissiveIntensity = al(status) ? 0.55 : 0.2;
+      group.userData.status       = status;
+      group.userData.output       = h.output       ?? group.userData.output ?? null;
+      group.userData.acknowledged = h.acknowledged ?? group.userData.acknowledged ?? false;
+      group.userData.in_downtime  = h.in_downtime  ?? group.userData.in_downtime  ?? false;
+      group.userData.backend_id   = h._backend_id  ?? group.userData.backend_id   ?? null;
+      group.userData.svc_ok       = h.services_ok   ?? null;
+      group.userData.svc_warn     = h.services_warn ?? null;
+      group.userData.svc_crit     = h.services_crit ?? null;
+      this._prevStatus[nodeId] = status;
 
-      // Pulse ring when transitioning TO critical / down
-      if (al(h.status) && !al(prev ?? '')) {
+      if (al(status) && !al(prev ?? '')) {
         this._spawnPulseRing(group.position, cfg.hex);
       }
 
-      // Update wifi heatmap texture
-      if (this._wifiMeshes[h.id]) {
-        this._wifiMeshes[h.id].material.map.dispose();
-        this._wifiMeshes[h.id].material.map = this._genWifiTexture(h.status);
-        this._wifiMeshes[h.id].material.needsUpdate = true;
+      if (this._wifiMeshes[nodeId]) {
+        this._wifiMeshes[nodeId].material.map.dispose();
+        this._wifiMeshes[nodeId].material.map = this._genWifiTexture(status);
+        this._wifiMeshes[nodeId].material.needsUpdate = true;
       }
 
-      if (this._activeNode?.id === h.id) {
-        this._activeNode.status = h.status;
+      if (this._activeNode?.id === nodeId) {
+        Object.assign(this._activeNode, {
+          status, output: h.output, acknowledged: h.acknowledged,
+          in_downtime: h.in_downtime, backend_id: h._backend_id,
+          svc_ok: h.services_ok, svc_warn: h.services_warn, svc_crit: h.services_crit,
+        });
         this.openInspector(this._activeNode);
       }
     });
-    // Keep cockpit visibility in sync
+
+    if (services.length) this._applyServiceUpdates(services);
+
     if (this._cockpitMode) {
       hosts.forEach(h => {
-        const g = this.nodeObjects[h.id];
-        if (g) g.visible = al(h.status) || h.status === 'warning';
+        const g = this._findGroup(h);
+        if (g) g.visible = al(g.userData.status) || g.userData.status === 'warning';
       });
     }
-    window.problemList?.update(this.data.nodes.map(n => ({ ...n, status: this.nodeObjects[n.id]?.userData?.status ?? n.status })));
-    this._log(`Status update · ${hosts.length} host(s)`);
+
+    window.problemList?.update(
+      this.data.nodes.map(n => ({ ...n, ...this.nodeObjects[n.id]?.userData ?? {} }))
+    );
+    this._log(`Status update · ${hosts.length} Host(s)${services.length ? `, ${services.length} Service(s)` : ''}`);
   }
 
-  connectWS(url) {
-    this._log(`Connecting → ${url}`);
-    const ws = new WebSocket(url);
-    ws.onopen    = () => this._log('WS connected');
-    ws.onclose   = () => this._log('WS disconnected');
-    ws.onmessage = (e) => {
-      try { const m = JSON.parse(e.data); if (m.type === 'status_update' && m.hosts) this.updateNodeStatus(m.hosts); } catch {}
+  /** Aggregate worst service state per host and overlay 3D visual if worse than host state. */
+  _applyServiceUpdates(services) {
+    const worst = {};
+    services.forEach(s => {
+      const host = s.host_name ?? s.id;
+      if (!host) return;
+      const st = mapState(s.state_label ?? s.status);
+      if (!worst[host] || S(st).sev > S(worst[host]).sev) worst[host] = st;
+    });
+    Object.entries(worst).forEach(([hostName, svcSt]) => {
+      const group = this.nodeObjects[hostName]
+        ?? Object.values(this.nodeObjects).find(g => g.userData.label === hostName);
+      if (!group) return;
+      group.userData.serviceStatus = svcSt;
+      const hostSt = group.userData.status ?? 'ok';
+      if (S(svcSt).sev > S(hostSt).sev) {
+        const mesh = group.children.find(c => c.isMesh);
+        if (mesh) {
+          const cfg = S(svcSt);
+          mesh.material.emissive.set(cfg.emissive);
+          mesh.material.emissiveIntensity = al(svcSt) ? 0.45 : 0.3;
+        }
+      }
+    });
+  }
+
+  /**
+   * Connect to a NagVis2-compatible WebSocket backend.
+   * Handles automatic reconnect with exponential backoff (2s → 30s).
+   * Supported message events: snapshot, status_update, heartbeat, backend_error.
+   * @param {string} url   Full ws:// or wss:// URL, e.g. ws://host:8008/ws/map/all-hosts
+   * @param {string} token Optional JWT bearer token (appended as ?token=… query param)
+   */
+  connectWS(url, token = null) {
+    if (this._wsClient) this._wsClient.disconnect();
+    const fullUrl = token ? `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}` : url;
+    const self = this;
+
+    const client = {
+      _dead: false, _delay: 2000, _ws: null,
+
+      connect() {
+        if (this._dead) return;
+        self._log(`WS → ${url}`);
+        try { this._ws = new WebSocket(fullUrl); }
+        catch (e) { self._log(`WS Fehler: ${e.message}`); this._retry(); return; }
+
+        this._ws.onopen = () => {
+          this._delay = 2000;
+          self._log('WS verbunden ✓');
+          self._setConnDot('connected');
+        };
+        this._ws.onclose = () => {
+          if (this._dead) return;
+          self._log('WS getrennt – Wiederverbindung…');
+          self._setConnDot('disconnected');
+          this._retry();
+        };
+        this._ws.onerror = () => {};
+        this._ws.onmessage = e => { try { self._onWsMsg(JSON.parse(e.data)); } catch {} };
+      },
+
+      _retry() {
+        setTimeout(() => this.connect(), this._delay);
+        this._delay = Math.min(this._delay * 1.5, 30_000);
+      },
+
+      forceRefresh() {
+        if (this._ws?.readyState === WebSocket.OPEN)
+          this._ws.send(JSON.stringify({ cmd: 'force_refresh' }));
+      },
+
+      disconnect() {
+        this._dead = true;
+        this._ws?.close();
+        self._setConnDot('disconnected');
+      },
     };
-    this.ws = ws;
+
+    this._wsClient = client;
+    this.ws = client;   // backward compat
+    client.connect();
+  }
+
+  disconnectWS() {
+    this._wsClient?.disconnect();
+    this._wsClient = null;
+    this.ws = null;
+  }
+
+  _setConnDot(state) {
+    const dot = document.getElementById('ws-conn-dot');
+    if (!dot) return;
+    dot.dataset.state = state;
+    dot.title = { connected: 'Live – verbunden', disconnected: 'Getrennt', off: '', error: 'Backend-Fehler' }[state] ?? state;
+  }
+
+  _onWsMsg(ev) {
+    const event = ev.event ?? ev.type;  // nagvis2 uses 'event', older clients used 'type'
+    switch (event) {
+      case 'snapshot':
+        this.updateNodeStatus(ev.hosts ?? [], ev.services ?? []);
+        this._log(`⬇ Snapshot: ${ev.hosts?.length ?? 0} Hosts, ${ev.services?.length ?? 0} Services`);
+        break;
+      case 'status_update': {
+        this.updateNodeStatus(ev.hosts ?? [], ev.services ?? []);
+        const n = (ev.hosts?.length ?? 0) + (ev.services?.length ?? 0);
+        const ts = ev.ts ? new Date(ev.ts * 1000).toLocaleTimeString() : '';
+        this._log(`↻ ${n} Änderung(en)${ev.elapsed ? ` · ${ev.elapsed}ms` : ''}${ts ? ` · ${ts}` : ''}`);
+        break;
+      }
+      case 'heartbeat':
+        this._log(`♥ ${ev.ts ? new Date(ev.ts * 1000).toLocaleTimeString() : ''}`);
+        break;
+      case 'backend_error':
+        this._log(`⚠ Backend: ${ev.message}`);
+        this._setConnDot('error');
+        break;
+    }
   }
 
   // ── Pulse rings ────────────────────────────────────────────
@@ -1350,13 +1490,25 @@ export class NV2Map3D {
     const dbmLine = data.wifiDbm != null
       ? `<div class="m-row"><span>WLAN-Signal</span><b>${data.wifiDbm} dBm · r≈${this._dbmToRadius(data.wifiDbm).toFixed(0)} u</b></div>`
       : '';
+    const ud = this.nodeObjects[data.id]?.userData ?? {};
+    const ackBadge  = ud.acknowledged ? '<span class="ins-tag ins-tag-ack">ACK</span>' : '';
+    const dtBadge   = ud.in_downtime  ? '<span class="ins-tag ins-tag-dt">DT</span>'  : '';
+    const outputRow = ud.output
+      ? `<div class="m-row m-row-output"><span>Output</span><b>${ud.output}</b></div>` : '';
+    const svcRow = (ud.svc_warn != null || ud.svc_crit != null)
+      ? `<div class="m-row"><span>Services</span><b>${ud.svc_ok ?? 0} OK / ${ud.svc_warn ?? 0} WARN / ${ud.svc_crit ?? 0} CRIT</b></div>` : '';
+    const backendRow = ud.backend_id
+      ? `<div class="m-row"><span>Backend</span><b>${ud.backend_id}</b></div>` : '';
     document.getElementById('ins-body').innerHTML = `
-      <div class="m-row"><span>Status</span><b class="${cfg.cls}">${cfg.label}</b></div>
+      <div class="m-row"><span>Status</span><b class="${cfg.cls}">${cfg.label}</b>${ackBadge}${dtBadge}</div>
+      ${outputRow}
+      ${svcRow}
       <div class="m-row"><span>Typ</span><b>${data.type}</b></div>
       <div class="m-row"><span>Ebene</span><b>${data.floor ?? '–'}</b></div>
       ${geoLine}
       ${dbmLine}
       ${pos ? `<div class="m-row"><span>Scene X/Y/Z</span><b>${pos.x.toFixed(1)} / ${pos.y.toFixed(1)} / ${pos.z.toFixed(1)}</b></div>` : ''}
+      ${backendRow}
     `;
     // Modell-Wechsel-Button für Portal-Nodes
     const foot = document.getElementById('ins-foot');
