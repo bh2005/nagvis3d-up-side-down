@@ -6,7 +6,7 @@
 2. [Projektstruktur](#2-projektstruktur)
 3. [Modelle konfigurieren](#3-modelle-konfigurieren)
 4. [Nodes und Links pflegen](#4-nodes-und-links-pflegen)
-5. [WebSocket-Integration](#5-websocket-integration)
+5. [WebSocket-Integration (NagVis2)](#5-websocket-integration-nagvis2)
 6. [Benutzeroberfläche](#6-benutzeroberfläche)
 7. [Features & Tastenkürzel](#7-features--tastenkürzel)
 8. [Deployment](#8-deployment)
@@ -23,7 +23,7 @@ Sie visualisiert Hosts, Switches und Access Points in einer interaktiven 3D-Szen
 - **Etagenbasierter Darstellung** (Hochhaus-Etagen oder Grubensohlen)
 - **Exploded View** — Etagen spreizen sich animiert auseinander (Faktor 1×–4×)
 - **Geo-Projektion** für Grubenmodelle (lat/lon → Szenenkoordinaten)
-- **Live-Statusupdates** via WebSocket
+- **Live-Statusupdates** via **nagvis2-kompatiblem WebSocket-Protokoll**
 - **WLAN-Heatmaps** für Access Points (dBm-gesteuert)
 - **Tunnel-/Kabelkanal-Glow** für unterirdische/etagenverbindende Leitungen
 - **Pulsringen** bei kritischen Statuswechseln
@@ -33,20 +33,23 @@ Sie visualisiert Hosts, Switches und Access Points in einer interaktiven 3D-Szen
 **Keine Build-Pipeline erforderlich.** Die Anwendung ist pure HTML/CSS/JS mit ES-Modulen.
 Three.js wird über CDN geladen (`cdn.jsdelivr.net`).
 
+**Design:** Checkmk-Farbpalette (OK teal `#13d389`, WARN gelb `#ffd703`, CRIT rot `#c83232`)
+— identisch mit nagvis2 für konsistentes Erscheinungsbild.
+
 ---
 
 ## 2 Projektstruktur
 
 ```
 src/
-├── index.html          # Hauptseite (HUD, Dialoge, Canvas, importmap)
-├── main.js             # Entry-Point — initialisiert alle Klassen
-├── config.js           # Konstanten & Statuskonfiguration (SC, S, al, SCENE_MAX …)
+├── index.html          # Hauptseite (HUD, WS-Dialog, Dialoge, Canvas, importmap)
+├── main.js             # Entry-Point — WS-Persistenz, openWsDialog(), connectNv3d()
+├── config.js           # Konstanten, Statuskonfiguration (SC, mapState, SCENE_MAX …)
 ├── data.js             # Geo-Helpers, buildFloors(), ModelManager
-├── scene.js            # NV2Map3D — Three.js-Szene, Exploded View, WebSocket
+├── scene.js            # NV2Map3D — Three.js-Szene, WS-Client, Inspector
 ├── panels.js           # UI-Panels: Minimap, FavoritesBar, ProblemList,
 │                       #            ModelDialog, MapOverlay
-├── style.css           # Dark-Theme mit Design-Token-System
+├── style.css           # Checkmk-Design-Token-System (Roboto, ok/warn/crit-Tokens)
 ├── changelog.txt       # Versionshistorie (UTF-16 kodiert!)
 └── admin-handbuch.md   # Dieses Dokument
 ```
@@ -60,11 +63,21 @@ src/
 | `BBOX_PAD` | 300 | Meter-Padding um Node-Cluster bei Geo-Projektion |
 | `TUNNEL_MIN_DIST` | 30 | Mindestdistanz für Auto-Tunnel-Erkennung (Grube) |
 
+**Status-Mapping (`mapState()` in `config.js`):**
+
+| nagvis2 `state_label` | Interner Status |
+|---|---|
+| `UP`, `OK` | `ok` |
+| `DOWN`, `UNREACHABLE` | `down` |
+| `WARNING` | `warning` |
+| `CRITICAL` | `critical` |
+| `UNKNOWN`, `PENDING` | `unknown` |
+
 **Öffentliche Klassen-API:**
 
 | Klasse | Modul | Zweck |
 |---|---|---|
-| `NV2Map3D` | `scene.js` | Three.js-Szene, Kamera, Nodes, Links |
+| `NV2Map3D` | `scene.js` | Three.js-Szene, Kamera, Nodes, Links, WS |
 | `Minimap` | `panels.js` | 2D-Draufsicht-Panel |
 | `FavoritesBar` | `panels.js` | Favoriten-Panel mit Slideshow |
 | `ProblemList` | `panels.js` | Problemliste (Status ≠ OK) |
@@ -183,53 +196,136 @@ Access Points benötigen `wifiDbm` für die Heatmap:
 
 ---
 
-## 5 WebSocket-Integration
+## 5 WebSocket-Integration (NagVis2)
 
-### 5.1 Verbindung herstellen
+NagVis 3D verbindet sich direkt zum **nagvis2-Backend** und versteht das nagvis2-WebSocket-Protokoll —
+kein separater Bridge-Layer erforderlich.
 
-In `main.js` nach `loadModel()`:
+### 5.1 Verbindung über die UI herstellen
+
+1. Im HUD auf den **WS**-Button klicken (zeigt Verbindungsstatus-Punkt)
+2. WebSocket-URL eingeben: `ws://nagvis2-host:8008/ws/map/<map-id>`
+3. Optional: Auth-Token eintragen
+4. **Verbinden** klicken
+
+Die Einstellungen werden in `localStorage` (`nv3d_ws_url`, `nv3d_ws_token`) gespeichert
+und beim nächsten Seitenstart automatisch verwendet.
+
+**Verbindungsstatus-Anzeige:**
+
+| Farbe | Bedeutung |
+|---|---|
+| ⚫ grau | Nicht konfiguriert |
+| 🟠 orange | Verbindung wird aufgebaut |
+| 🟢 grün | Verbunden; empfange Live-Daten |
+| 🔴 rot | Verbindung unterbrochen (Reconnect läuft) |
+
+### 5.2 Verbindung per JavaScript-Konsole
 
 ```js
-await window.app.loadModel(initialModel);
-window.app.connectWS('ws://nagios-server:8008/ws/map/my-map');
+// Verbinden (persistiert automatisch in localStorage)
+connectNv3d('ws://nagvis2-host:8008/ws/map/my-map', 'optionaler-bearer-token');
+
+// Trennen und Persistenz löschen
+disconnectNv3d();
 ```
 
-### 5.2 Nachrichtenformat
+### 5.3 Nachrichtenformat (nagvis2-Protokoll)
 
+**Snapshot (beim ersten Verbinden):**
 ```json
 {
-  "type": "status_update",
+  "event": "snapshot",
   "hosts": [
-    { "id": "web-01",  "status": "critical" },
-    { "id": "sw-og1", "status": "ok"        }
+    {
+      "name": "web-01",
+      "state_label": "UP",
+      "acknowledged": false,
+      "in_downtime": false,
+      "output": "OK - Response time 12ms",
+      "services_ok": 18,
+      "services_warn": 0,
+      "services_crit": 1,
+      "_backend_id": "checkmk-prod"
+    }
+  ],
+  "services": []
+}
+```
+
+**Status-Update (laufend):**
+```json
+{
+  "event": "status_update",
+  "hosts": [
+    { "name": "web-01", "state_label": "CRITICAL",
+      "output": "HTTP CRITICAL: 503", "_backend_id": "checkmk-prod" }
   ]
 }
 ```
 
-Gültige Status-Werte: `ok` · `warning` · `critical` · `down` · `unknown`
+**Heartbeat** (kein Payload außer `"event": "heartbeat"`) — kein Status-Reset.
 
-### 5.3 Automatische Effekte bei Statuswechsel
+**Backend-Fehler:**
+```json
+{ "event": "backend_error", "message": "checkmk-prod: Connection refused" }
+```
+
+### 5.4 Status-Mapping
+
+| nagvis2 `state_label` | 3D-Darstellung |
+|---|---|
+| `UP`, `OK` | Teal-Glow (OK) |
+| `DOWN`, `UNREACHABLE` | Rot-Glow (DOWN) |
+| `WARNING` | Gelb-Glow (WARNING) |
+| `CRITICAL` | Rot-Glow (CRITICAL) + Pulsringe |
+| `UNKNOWN`, `PENDING` | Grau (UNKNOWN) |
+
+### 5.5 Automatische Effekte bei Statuswechsel
 
 | Transition | Effekt |
 |---|---|
 | beliebig → `critical`/`down` | 3 expandierende Pulsringe (rot) |
 | `critical`/`down` → besser | Pulsringe enden automatisch |
 | `accesspoint`-Status ändert sich | Heatmap-Textur wird neu generiert |
+| `acknowledged = true` | ACK-Badge im Inspector |
+| `in_downtime = true` | DT-Badge im Inspector |
 
-### 5.4 Minimales Python-Backend (FastAPI)
+### 5.6 Reconnect-Verhalten
+
+Bei Verbindungsunterbrechung versucht NagVis 3D automatisch, die Verbindung neu aufzubauen:
+
+| Versuch | Wartezeit |
+|---|---|
+| 1 | 2 s |
+| 2 | 4 s |
+| 3 | 8 s |
+| 4 | 16 s |
+| 5+ | 30 s (Maximum) |
+
+Bei erfolgreicher Verbindung wird die Wartezeit auf 2 s zurückgesetzt.
+
+### 5.7 Minimales Python-Test-Backend (FastAPI)
+
+Zum lokalen Testen ohne vollständiges nagvis2-Backend:
 
 ```python
 import json, asyncio
 from fastapi import WebSocket
 
-async def push_status(ws: WebSocket, map_id: str):
+async def ws_endpoint(ws: WebSocket, map_id: str):
+    await ws.accept()
+    # Initialer Snapshot
+    await ws.send_text(json.dumps({
+        "event": "snapshot",
+        "hosts": [
+            {"name": "web-01", "state_label": "UP",
+             "output": "OK", "_backend_id": "demo"}
+        ]
+    }))
     while True:
-        hosts = query_livestatus()
-        await ws.send_text(json.dumps({
-            "type": "status_update",
-            "hosts": [{"id": h.name, "status": h.state} for h in hosts]
-        }))
         await asyncio.sleep(30)
+        await ws.send_text(json.dumps({"event": "heartbeat"}))
 ```
 
 ---
@@ -238,23 +334,23 @@ async def push_status(ws: WebSocket, map_id: str):
 
 ### 6.1 Etagennavigation
 
-Der **Etagen-Panel** (rechts) listet alle Etagen.  
-Klick → Kamera fliegt auf diese Etage, andere werden ausgeblendet.  
-**„Alle"** → Übersicht aller Etagen.  
+Der **Etagen-Panel** (rechts) listet alle Etagen.
+Klick → Kamera fliegt auf diese Etage, andere werden ausgeblendet.
+**„Alle"** → Übersicht aller Etagen.
 **Doppelklick** → 2D-Grundriss-Modus (Draufsicht).
 
 ### 6.2 Exploded View
 
 Der **SPREIZUNG**-Schieberegler (unten links, 1×–4×) spreizt alle Etagen auseinander —
-Verbindungen und Tunnel folgen animiert mit.  
+Verbindungen und Tunnel folgen animiert mit.
 Wechsel in den 2D-Modus setzt die Spreizung automatisch auf 1× zurück.
 
 ### 6.3 Minimap
 
-Button **⊡** öffnet eine 2D-Draufsicht (unten rechts).  
-- Etagen-Umrisse als farbige Rahmen  
-- Node-Status als farbige Punkte  
-- Kamera-Pfeil zeigt aktuelle Position und Blickrichtung  
+Button **⊡** öffnet eine 2D-Draufsicht (unten rechts).
+- Etagen-Umrisse als farbige Rahmen
+- Node-Status als farbige Punkte
+- Kamera-Pfeil zeigt aktuelle Position und Blickrichtung
 - **Klick auf einen Node** → Kamera fliegt direkt dorthin
 
 ### 6.4 Favoriten-Panel
@@ -276,23 +372,33 @@ Button **★** (oben rechts) öffnet das Favoriten-Panel (unten links).
 
 ### 6.5 Node Inspector
 
-Klick auf Node → Inspector-Panel (rechts).  
-Zeigt: Status, Typ, Etage, GPS, WLAN-dBm.  
+Klick auf Node → Inspector-Panel (rechts). Zeigt:
+- **Status-Badge** mit optionalem **ACK**-Badge (blau) und **DT**-Badge (lila)
+- **Plugin-Output** – letzte Check-Ausgabe
+- **Services** – Zähler OK / WARN / CRIT aus aggregierten Service-Daten
+- **Typ, Etage, GPS-Koordinaten, WLAN-dBm** (je nach Node-Typ)
+- **Backend** – zuständiges nagvis2-Backend
+
 „Focus Camera" → Kamera auf Node zentrieren.
 
 ### 6.6 Problemliste
 
-Button **⚑ N** öffnet die nach Schwere sortierte Problemliste.  
+Button **⚑ N** öffnet die nach Schwere sortierte Problemliste.
 Klick auf Eintrag → Kamera auf betroffenen Node.
 
 ### 6.7 OSM-Standortkarte
 
-Button **🗺** öffnet die Leaflet-Karte aller Modelle mit GPS-Koordinaten.  
+Button **🗺** öffnet die Leaflet-Karte aller Modelle mit GPS-Koordinaten.
 Klick auf Marker → Modell sofort laden.
 
 ### 6.8 System-Log
 
 Unteres linkes Panel. **▼/▶** im Titel klappt die Einträge ein/aus.
+
+### 6.9 WS-Verbindung
+
+Button **WS ●** öffnet den Verbindungs-Dialog. Der farbige Punkt zeigt den Live-Status.
+→ Siehe §5 für Details.
 
 ---
 
@@ -314,6 +420,7 @@ Unteres linkes Panel. **▼/▶** im Titel klappt die Einträge ein/aus.
 | **Minimap** | Button **⊡** |
 | **Favoriten-Panel** | Button **★** |
 | **Slideshow** | **▶ Slideshow** im Favoriten-Panel |
+| **WS-Dialog** | Button **WS ●** |
 
 ### Cockpit-Modus
 
@@ -423,6 +530,12 @@ _dbmToRadius(dbm) {
 3. HTML-Element in `index.html` ergänzen
 4. CSS in `style.css` ergänzen (Design-Tokens aus `:root` verwenden)
 
+### 9.6 Eigenes WS-Backend anbinden
+
+Das erwartete Protokoll ist das nagvis2-Format (→ §5.3).
+Für Custom-Backends die `event`-Typen und das `hosts[]`-Format entsprechend implementieren.
+`mapState()` in `config.js` kann um eigene `state_label`-Werte erweitert werden.
+
 ---
 
 ## 10 Fehlerbehebung
@@ -433,13 +546,16 @@ _dbmToRadius(dbm) {
 | Verbindungen folgen Spreizung nicht | `srcId`/`tgtId` fehlt in `linkObjects` oder `tunnelObjects` | `scene.js: _storeBasePositions()` nach `_buildLinks()` prüfen |
 | Kein Tunnel-Glow | Distanz < `TUNNEL_MIN_DIST` oder kein `tunnel:true` | `tunnel:true` explizit setzen oder Konstante in `config.js` senken |
 | Heatmap fehlt | `type` nicht `'accesspoint'` oder `wifiDbm` fehlt | Beide Felder prüfen |
-| WebSocket verbindet nicht | URL falsch oder Backend nicht erreichbar | Browser-Konsole; CORS/WSS beachten |
+| WS verbindet nicht | URL falsch oder Backend nicht erreichbar | Browser-Konsole; CORS/WSS beachten; nagvis2 erreichbar? |
+| WS-Dot bleibt orange | Backend antwortet nicht auf Handshake | Backend-Logs prüfen; Token korrekt? |
+| Status bleibt „unknown" | `state_label` nicht in `STATE_LABEL_MAP` | `config.js: STATE_LABEL_MAP` erweitern |
+| ACK/DT-Badges fehlen | nagvis2 sendet `acknowledged`/`in_downtime` nicht | nagvis2-WS-Manager-Version prüfen |
 | Minimap reagiert nicht auf Klick | `window._minimap` nicht initialisiert | Konsole auf Fehler beim Konstruktor prüfen |
-| Favoriten-Panel fehlt | `window._favorites` init-Fehler | try/catch in `main.js` prüfen; `#favorites-panel`, `#btn-fav-panel` etc. in HTML vorhanden? |
+| Favoriten-Panel fehlt | `window._favorites` init-Fehler | try/catch in `main.js` prüfen |
 | Slideshow startet nicht | Weniger als 2 Einträge mit aktivem ▶-Häkchen | Mindestens 2 Favoriten mit aktivierter Slideshow-Checkbox |
 | Labels bleiben nach Modellwechsel | CSS2D-DOM-Leak | `disposeCSS2D()` in `scene.js` prüfen |
 | Geo-Projektion falsch | Referenzkoordinate zu weit weg | `cfg.lat/lon` näher am Datenzentrum wählen |
 
 ---
 
-*Letzte Änderung: 2026-04-06 · NagVis 3D*
+*Letzte Änderung: 2026-04-21 · NagVis 3D*

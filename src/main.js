@@ -45,5 +45,39 @@ import { Minimap, ProblemList, ModelDialog, MapOverlay, FavoritesBar } from './p
   // Optional: load additional models from an external registry
   // await ModelManager.loadRegistry('models.json');
 
-  // WS:  app.connectWS('ws://localhost:8008/ws/map/my-map');
+  // WS: connect to nagvis2 backend if configured
+  _initWsFromStorage();
 })();
+
+// ─────────────────────────────────────────────────────────────
+//  WS SETTINGS PERSISTENCE
+// ─────────────────────────────────────────────────────────────
+function _initWsFromStorage() {
+  const url   = localStorage.getItem('nv3d_ws_url');
+  const token = localStorage.getItem('nv3d_ws_token') || null;
+  if (url) window.app.connectWS(url, token);
+}
+
+window.connectNv3d = function(url, token) {
+  if (url) localStorage.setItem('nv3d_ws_url', url);
+  else     localStorage.removeItem('nv3d_ws_url');
+  if (token) localStorage.setItem('nv3d_ws_token', token);
+  else       localStorage.removeItem('nv3d_ws_token');
+  window.app.connectWS(url, token || null);
+};
+
+window.disconnectNv3d = function() {
+  localStorage.removeItem('nv3d_ws_url');
+  localStorage.removeItem('nv3d_ws_token');
+  window.app.disconnectWS();
+};
+
+// WS dialog open/close
+window.openWsDialog = function() {
+  document.getElementById('ws-dialog').classList.add('open');
+  document.getElementById('ws-url-input').value   = localStorage.getItem('nv3d_ws_url')   || '';
+  document.getElementById('ws-token-input').value = localStorage.getItem('nv3d_ws_token') || '';
+};
+window.closeWsDialog = function() {
+  document.getElementById('ws-dialog').classList.remove('open');
+};

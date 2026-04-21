@@ -3,14 +3,31 @@
 //  STATUS CONFIG
 // ─────────────────────────────────────────────────────────────
 export const SC = {
-  ok:       { hex:0x27ae60, emissive:0x1a7a40, badge:'s-ok',   cls:'ok',   label:'OK',       sev:0 },
-  warning:  { hex:0xe67e22, emissive:0xa05510, badge:'s-warn',  cls:'warn', label:'WARNING',  sev:1 },
-  unknown:  { hex:0x7f8c8d, emissive:0x4a5455, badge:'s-unkn',  cls:'unkn', label:'UNKNOWN',  sev:2 },
-  critical: { hex:0xe74c3c, emissive:0xb02020, badge:'s-crit',  cls:'crit', label:'CRITICAL', sev:3 },
-  down:     { hex:0xc0392b, emissive:0x801010, badge:'s-down',  cls:'down', label:'DOWN',     sev:4 },
+  ok:       { hex:0x13d389, emissive:0x0a8050, badge:'s-ok',   cls:'ok',   label:'OK',       sev:0 },
+  warning:  { hex:0xffd703, emissive:0xa08800, badge:'s-warn',  cls:'warn', label:'WARNING',  sev:1 },
+  unknown:  { hex:0x9e9e9e, emissive:0x505050, badge:'s-unkn',  cls:'unkn', label:'UNKNOWN',  sev:2 },
+  critical: { hex:0xc83232, emissive:0x801010, badge:'s-crit',  cls:'crit', label:'CRITICAL', sev:3 },
+  down:     { hex:0xc83232, emissive:0x801010, badge:'s-down',  cls:'down', label:'DOWN',     sev:4 },
 };
 export const S  = (s) => SC[s] ?? SC.unknown;
 export const al = (s) => s === 'critical' || s === 'down';
+
+// Maps NagVis2 / Livestatus state_label → nagvis3d internal status key
+export const STATE_LABEL_MAP = {
+  UP: 'ok',   OK: 'ok',
+  DOWN: 'down', UNREACHABLE: 'down',
+  WARNING: 'warning',
+  CRITICAL: 'critical',
+  UNKNOWN: 'unknown', PENDING: 'unknown',
+};
+// Accepts nagvis2 state_label ('UP', 'DOWN', …) or direct status ('ok', 'critical', …)
+export const mapState = label => {
+  if (!label) return 'unknown';
+  const up = label.toUpperCase();
+  if (STATE_LABEL_MAP[up]) return STATE_LABEL_MAP[up];
+  const lo = label.toLowerCase();
+  return SC[lo] ? lo : 'unknown';
+};
 
 // ─────────────────────────────────────────────────────────────
 //  CONSTANTS

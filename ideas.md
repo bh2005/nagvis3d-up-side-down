@@ -1,4 +1,6 @@
-# NagVis 3D – v3 Ideen & Feature-Backlog
+# NagVis 3D – Ideen & Feature-Backlog
+
+---
 
 ## ✅ Implementiert
 
@@ -26,23 +28,51 @@ Rein mit `THREE.RingGeometry`, kein externes Tween-Framework.
 ### WLAN-Heatmap für AccessPoints
 Nodes mit `type: 'accesspoint'` bekommen:
 - Eigene Geometrie: flacher Disc-Körper + Antenne
-- Radialer Farbverlauf (Canvas-Texture) auf der Etagenebene:
-  - Grün (OK), Gelb (WARNING), Rot (CRITICAL/DOWN)
-- Konzentrische Signal-Ringe im Gradient
+- Radialer Farbverlauf (Canvas-Texture) auf der Etagenebene
 - Additive Blending → mehrere APs überlagern sich realistisch
-- Radius aus `wifiDbm` (dBm-Wert): -30 dBm (stark) → 48 u, -90 dBm (schwach) → 8 u
-  - Berechnung: `_dbmToRadius(dbm)` linear mapping
-- dBm-Wert und berechneter Radius werden im Inspector angezeigt
-- Texture wird bei Status-Update neu generiert
+- Radius aus `wifiDbm`: -30 dBm → 48 u, -90 dBm → 8 u
+
+### Exploded-View
+Slider der die Etagen vertikal auseinanderfährt.
+`FLOOR_STEP` dynamisch skalieren + alle Positionen per LERP animieren.
+Verbindungen und Tunnel folgen synchron.
+
+### Minimap (2D-Draufsicht)
+Canvas-Panel (⊡-Button) mit Kamera-Pfeil und Click-to-fly.
+
+### Favoriten-Panel
+Screenshot + Thumbnail, Inline-Umbenennen, Slideshow-Modus,
+Pro-Favorit-Checkbox; persistiert in `localStorage`.
+
+### NagVis2-WS-Integration (Phase 1)
+- nagvis2-kompatibles Protokoll: `event: snapshot/status_update/heartbeat/backend_error`
+- `mapState()`: `state_label` (UP/DOWN/WARNING/CRITICAL/…) → interne Status-Keys
+- Service-Aggregation: schlechtester Service-Status je Host
+- ACK/DT/Output/Backend-ID in `userData` gespeichert
+- Exponentieller Backoff 2 s → 30 s
+- WS-Settings-Dialog mit localStorage-Persistenz
+- `connectNv3d(url, token)` / `disconnectNv3d()` JS-API
+- `#ws-conn-dot` Verbindungsstatus-Anzeige im HUD
+
+### Inspector erweitert
+ACK-Badge, DT-Badge, Plugin-Output, Services OK/WARN/CRIT, Backend-ID
+
+### Design-Alignment mit nagvis2
+- Checkmk-Farbpalette: OK teal, WARN gelb, CRIT/DOWN rot
+- Roboto / Roboto Mono als primäre Schriftfamilie
+- CSS-Tokens: `--ok-bg`, `--warn-bg`, `--crit-bg`, `--ok-border` etc.
+- Blau-graue Hintergründe statt near-black
 
 ---
 
-## 🚀 Nächste Ideen (offen)
+## 🚀 Offen (nächste Ideen)
 
-### Exploded-View
-Slider der die Etagen vertikal auseinanderfährt
-→ Nodes auf dicht übereinanderliegenden Etagen besser unterscheidbar.
-`FLOOR_STEP` dynamisch skalieren + alle Positionen lerpen.
+### ACK / Downtime / Reschedule aus 3D-Ansicht
+Kontextmenü per Rechtsklick auf Node:
+- ACK (Problem bestätigen) mit Kommentar-Dialog
+- Downtime planen mit Start/Ende
+- Reschedule Check
+Calls an nagvis2 REST API: `POST /api/v1/hosts/{host}/ack` usw.
 
 ### Node-Clustering bei weitem Zoom
 Kamera-Distanz > Schwellwert → Hosts einer Etage
@@ -69,33 +99,34 @@ Beim Wechsel auf CRITICAL: synthesizierter Alarmton
 rein über `AudioContext` (kein Audio-File nötig).
 Konfigurierbar (an/aus, Lautstärke).
 
-### Minimap (2D-Draufsicht)
-Kleines Canvas in einer Ecke das immer die Draufsicht zeigt,
-aktuellen Kamerastandpunkt als Pfeil visualisiert.
-
-### Export: Screenshot / Fly-Through Video
-`renderer.domElement.toDataURL()` → PNG-Download.
-Video: `MediaRecorder` + Canvas-Stream → WebM.
-
-### Echte NagVis-API-Anbindung
-`app.connectWS('ws://nagvis-host/ws/...')` ist bereits vorbereitet.
-Status-Polling als Fallback (`/api/v1/hosts`), dann auf
-WS-Push upgraden sobald verfügbar.
+### Favoriten Export/Import
+JSON-Datei mit Slideshow-Konfiguration; Austausch zwischen Instanzen.
 
 ### Custom Icons per Node-Typ
 Statt generischer Sphere/Box/Cone: eigene SVG-Icons als
 `CSS2DObject` oder `SpriteMaterial` je nach Typ
 (Server, Switch, Router, AccessPoint, VM, Container …).
 
+### 3D-Gadget in NagVis2
+3D-Ansicht als Gadget-Typ in normalen NagVis2-Maps einbettbar
+(ähnlich Graph/Iframe-Gadget). Shared JWT-Auth.
+
+### Performance-Optimierung (>500 Nodes)
+Instanced Mesh, LOD (Level of Detail), Frustum Culling.
+
 ---
 
 ## Technische Notizen
 
-| Feature            | Technik                              |
-|--------------------|--------------------------------------|
-| Pulse-Ringe        | `THREE.RingGeometry` + AnimFrame-Loop |
-| WLAN-Heatmap       | `CanvasTexture` + `AdditiveBlending` |
-| Search-Rings       | `THREE.RingGeometry` + opacity pulse |
-| Cockpit-Bg         | `scene.background = THREE.Color`     |
-| Cockpit-Fog        | `THREE.FogExp2` color swap           |
-| Wifi-Status-Update | `material.map` dispose + neu generieren |
+| Feature                | Technik                                              |
+|------------------------|------------------------------------------------------|
+| Pulse-Ringe            | `THREE.RingGeometry` + AnimFrame-Loop                |
+| WLAN-Heatmap           | `CanvasTexture` + `AdditiveBlending`                 |
+| Search-Rings           | `THREE.RingGeometry` + opacity pulse                 |
+| Cockpit-Bg             | `scene.background = THREE.Color`                     |
+| Cockpit-Fog            | `THREE.FogExp2` color swap                           |
+| Wifi-Status-Update     | `material.map` dispose + neu generieren              |
+| WS-Backoff             | `_delay = Math.min(_delay * 2, 30000)` in `connectWS` |
+| mapState()             | `STATE_LABEL_MAP` + fallback auf `SC[lo]`            |
+| Service-Aggregation    | `_applyServiceUpdates()` in `scene.js`               |
+| Inspector userData     | `nodeObjects[id].userData.{ack,dt,output,svc_*,backend_id}` |
