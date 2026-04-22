@@ -68,6 +68,50 @@ Der Verbindungsstatus wird als farbiger Punkt neben dem WS-Button angezeigt:
 
 ---
 
+## Host-Voraussetzungen
+
+Damit ein Host in der 3D-Szene erscheint, muss er im **Modell-JSON** definiert sein.
+Für Live-Statusupdates aus nagvis2 muss die `id` dem Hostnamen in Checkmk/NagVis2 entsprechen.
+
+### Pflichtfelder im JSON
+
+```json
+{
+  "id":     "web-01",      // muss mit nagvis2-Hostnamen übereinstimmen
+  "label":  "Webserver 01",
+  "type":   "host",        // "host" | "switch" | "accesspoint" | "router"
+  "floor":  "1. OG",       // exakter Etagenname des Modells
+  "x":      20,
+  "y":     -18,
+  "z":     -15,
+  "status": "ok"           // Startstatus (wird durch WS überschrieben)
+}
+```
+
+**Optionale Felder:** `room` (Raumname im Inspector), `linkedModel` (Portal zu anderem Modell),
+`wifiDbm` (nur für `type: "accesspoint"`, steuert Heatmap-Radius).
+
+### Abgleich mit nagvis2
+
+Der Live-Status wird anhand der `id` zugeordnet (Fallback: `name`, dann `label`).
+Ein Host ohne passende `id` im Modell wird vom WS-Update **still ignoriert**.
+
+### WS-Felder pro Host-Eintrag
+
+| Feld | Pflicht | Beschreibung |
+|---|---|---|
+| `name` / `id` | ✅ | Trifft den Node im Modell |
+| `state_label` | ✅ | `UP` · `DOWN` · `UNREACHABLE` · `WARNING` · `CRITICAL` · `UNKNOWN` · `PENDING` |
+| `output` | — | Plugin-Output (Inspector) |
+| `acknowledged` | — | `true` → ACK-Badge |
+| `in_downtime` | — | `true` → DT-Badge |
+| `_backend_id` | — | Backend-Name |
+| `services_ok/warn/crit` | — | Service-Zähler im Inspector |
+
+→ Vollständige Dokumentation: **[admin-handbuch.md §4.5](src/admin-handbuch.md)**
+
+---
+
 ## Projektstruktur
 
 ```
