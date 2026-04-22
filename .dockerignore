@@ -1,22 +1,26 @@
-# Entwickler-Artefakte
+# Dev-Abhängigkeiten & Versionskontrolle
 node_modules/
 .git/
 .github/
 
-# Testdateien (nicht im Image)
+# Tests & Coverage
 tests/
+coverage/
+vitest.config.js
 
-# Dokumentation + Screenshots
+# Dokumentation & Screenshots (root-Level)
 *.md
 *.png
 *.jpg
-ideas.md
 
-# Konfigurationsdateien (nicht im Image)
+# Dokumentation in src/ (nicht nötig im Image)
+src/*.md
+src/*.txt
+
+# Build- & Deploy-Konfiguration
 render.yaml
-vitest.config.js
 package.json
 package-lock.json
 
-# Source-Backup (Dead-Code)
+# Dead-Code
 src/app.js

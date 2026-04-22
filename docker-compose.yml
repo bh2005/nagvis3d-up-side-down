@@ -4,10 +4,33 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        BUILD_DATE: "${BUILD_DATE:-}"
+        VERSION: "${VERSION:-0.1.0}"
+        VCS_REF: "${VCS_REF:-}"
+    image: nagvis3d:${VERSION:-latest}
     container_name: nagvis3d
     restart: unless-stopped
     ports:
-      - "8090:80"
-    # Für lokale Entwicklung: Dateien live mounten (kein Rebuild nötig)
-    # volumes:
-    #   - ./src:/usr/share/nginx/html:ro
+      - "${NAGVIS3D_PORT:-8090}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/index.html"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ── Dev-Modus: src/ live einbinden, kein Rebuild nötig ─────────────────
+  # Starten mit: docker compose --profile dev up
+  nagvis3d-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nagvis3d:dev
+    container_name: nagvis3d-dev
+    profiles: [dev]
+    restart: "no"
+    ports:
+      - "${NAGVIS3D_DEV_PORT:-3000}:80"
+    volumes:
+      - ./src:/usr/share/nginx/html:ro

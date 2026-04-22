@@ -5,7 +5,7 @@
 1. [Systemübersicht](#1-systemübersicht)
 2. [Projektstruktur](#2-projektstruktur)
 3. [Modelle konfigurieren](#3-modelle-konfigurieren)
-4. [Nodes und Links pflegen](#4-nodes-und-links-pflegen)
+4. [Nodes und Links pflegen](#4-nodes-und-links-pflegen) · [4.5 Host-Voraussetzungen](#45-voraussetzungen-für-die-anzeige-eines-hosts)
 5. [WebSocket-Integration (NagVis2)](#5-websocket-integration-nagvis2)
 6. [Benutzeroberfläche](#6-benutzeroberfläche)
 7. [Features & Tastenkürzel](#7-features--tastenkürzel)
@@ -193,6 +193,77 @@ Access Points benötigen `wifiDbm` für die Heatmap:
 | −41 bis −55 | Gut | 30–43 |
 | −56 bis −70 | Mittel | 16–29 |
 | −71 bis −90 | Schwach | 8–15 |
+
+### 4.5 Voraussetzungen für die Anzeige eines Hosts
+
+Damit ein Node in der 3D-Szene erscheint, muss er im Modell-JSON korrekt definiert sein.
+Für Live-Statusupdates muss zusätzlich die **`id` mit dem Hostnamen in nagvis2** übereinstimmen.
+
+#### Pflichtfelder im Modell-JSON
+
+| Feld | Typ | Beschreibung |
+|---|---|---|
+| `id` | string | Eindeutige ID — **muss mit dem nagvis2-Hostnamen übereinstimmen** |
+| `label` | string | Anzeigename in der 3D-Szene |
+| `type` | string | `"host"` · `"switch"` · `"accesspoint"` · `"router"` |
+| `floor` | string | Etagenname — **muss exakt** mit dem Modell-Etagenlabel übereinstimmen |
+| `x` | number | X-Position im 3D-Raum (Szeneneinheiten oder Meter bei Geo-Projektion) |
+| `y` | number | Y-Position (Höhe) |
+| `z` | number | Z-Position |
+| `status` | string | Initialer Status: `"ok"` · `"warning"` · `"critical"` · `"down"` · `"unknown"` |
+
+**Minimales Beispiel:**
+
+```json
+{
+  "id":     "web-01",
+  "label":  "Webserver 01",
+  "type":   "host",
+  "floor":  "1. OG",
+  "x":      20,
+  "y":     -18,
+  "z":     -15,
+  "status": "ok"
+}
+```
+
+#### Optionale Felder
+
+| Feld | Beschreibung |
+|---|---|
+| `room` | Raumbezeichnung (erscheint im Inspector) |
+| `linkedModel` | Portal zu anderem Modell (z.B. `"dc1"`) |
+| `wifiDbm` | Nur für `type: "accesspoint"` — Signal in dBm (−30 bis −90) |
+
+#### Abgleich mit nagvis2 (Live-Status)
+
+Die Szene sucht einen Node per `_findGroup()` in dieser Reihenfolge:
+
+1. Exakter Treffer über `id`
+2. Treffer über `name` (aus dem WS-Paket)
+3. Treffer über `label` (Fallback)
+
+Die `id` im JSON sollte daher dem **Hostnamen in nagvis2** entsprechen.
+Bei abweichender Benennung kann `_findGroup()` zwar über `label` matchen — konsistente IDs
+vereinfachen die Konfiguration jedoch erheblich und vermeiden stille Fehler.
+
+#### Live-Status-Felder (WS-Update pro Host-Eintrag)
+
+| Feld | Pflicht | Beschreibung |
+|---|---|---|
+| `name` oder `id` | ✅ | Zum Auffinden des Nodes im Modell |
+| `state_label` | ✅ | nagvis2-Wert: `UP` · `DOWN` · `UNREACHABLE` · `WARNING` · `CRITICAL` · `UNKNOWN` · `PENDING` |
+| `output` | — | Plugin-Output / Check-Ausgabe (erscheint im Inspector) |
+| `acknowledged` | — | `true` → ACK-Badge im Inspector |
+| `in_downtime` | — | `true` → DT-Badge im Inspector |
+| `_backend_id` | — | Name des nagvis2-Backends |
+| `services_ok` | — | Anzahl OK-Services |
+| `services_warn` | — | Anzahl WARNING-Services |
+| `services_crit` | — | Anzahl CRITICAL-Services |
+
+> **Hosts ohne passende `id` im Modell** werden vom WS-Update still ignoriert —
+> kein Fehler, kein Log-Eintrag. Daher bei fehlendem Status-Update zuerst
+> die `id`-Übereinstimmung prüfen (→ §10 Fehlerbehebung).
 
 ---
 
@@ -542,6 +613,8 @@ Für Custom-Backends die `event`-Typen und das `hosts[]`-Format entsprechend imp
 
 | Problem | Ursache | Lösung |
 |---|---|---|
+| Node erscheint gar nicht | Pflichtfelder (`id`, `label`, `type`, `floor`, `x`/`y`/`z`) im JSON fehlen | JSON-Eintrag gemäß §4.5 prüfen |
+| Node erscheint, Status bleibt immer „unknown" | `id` im JSON stimmt nicht mit nagvis2-Hostnamen überein | `id` im JSON auf exakten Hostnamen setzen; Groß-/Kleinschreibung beachten |
 | Node erscheint nicht | `floor` stimmt nicht mit Modell-Etagenlabel überein | Exakte Schreibweise prüfen (Umlaute, Leerzeichen) |
 | Verbindungen folgen Spreizung nicht | `srcId`/`tgtId` fehlt in `linkObjects` oder `tunnelObjects` | `scene.js: _storeBasePositions()` nach `_buildLinks()` prüfen |
 | Kein Tunnel-Glow | Distanz < `TUNNEL_MIN_DIST` oder kein `tunnel:true` | `tunnel:true` explizit setzen oder Konstante in `config.js` senken |
