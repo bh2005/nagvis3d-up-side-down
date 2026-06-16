@@ -143,7 +143,7 @@ nagvis3d-up-side-down/
 | **P3 – Commands** | ACK / Downtime / Reschedule direkt aus 3D-Ansicht | 🔲 |
 | **P4 – BI-Status** | BI-Status (ui-4-bi) als 3D-Node-Typ; Theme-Sync | 🔲 |
 
-Das nagvis2-Backend sendet Status-Updates direkt an `connectWS(url, token)` — kein Bridge-Layer mehr nötig.
+Das nagvis2-Backend sendet Status-Updates direkt an `window.connectNv3d(url, token)` — kein Bridge-Layer mehr nötig.
 
 ---
 

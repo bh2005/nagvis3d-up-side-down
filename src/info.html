@@ -198,13 +198,23 @@
   <p class="lead">
     Beschreibt alle Felder, die ein Node oder Link in einer externen JSON-Datei (<code>data/*.json</code>)
     benötigt, um korrekt platziert, gerendert und animiert zu werden.
-    Modelle werden über <code>dataUrl</code> in <code>MODEL_PRESETS[]</code> verknüpft
-    oder aus der Registry <code>models.json</code> geladen.
+    Modelle werden über <code>dataUrl</code> in <code>MODEL_PRESETS[]</code> (in <code>data.js</code>)
+    verknüpft oder zur Laufzeit über <code>ModelManager.add()</code> / die Registry <code>models.json</code>
+    ergänzt.
   </p>
+
+  <div class="note">
+    Architektur-Hinweis: Die Anwendung ist als ES-Module aufgeteilt — es gibt kein monolithisches
+    <code>app.js</code> mehr. Relevante Module: <code>config.js</code> (Status/Konstanten),
+    <code>data.js</code> (Geo-Layout, <code>ModelManager</code>), <code>scene.js</code>
+    (<code>NV2Map3D</code> – Three.js-Szene, Inspector, WebSocket), <code>panels.js</code>
+    (Minimap, Problemliste, Modell-Dialog, Karten-Overlay, Favoriten) und <code>main.js</code> (Boot).
+  </div>
 
   <div class="toc">
     <div class="toc-title">Inhalt</div>
     <ol>
+      <li><a href="#architecture">Architektur</a></li>
       <li><a href="#nodetypes">Node-Typen</a></li>
       <li><a href="#nodes">Node-Felder</a></li>
       <li><a href="#links">Link-Felder</a></li>
@@ -212,8 +222,33 @@
       <li><a href="#placement">Platzierungslogik</a></li>
       <li><a href="#examples">Vollständige Beispiele</a></li>
       <li><a href="#ws">WebSocket-Statusupdates</a></li>
+      <li><a href="#data">Externe Datendateien &amp; Registry</a></li>
+      <li><a href="#shortcuts">Shortcuts &amp; UI</a></li>
     </ol>
   </div>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section id="architecture">
+    <h2>0 · Architektur</h2>
+
+    <p>Die Anwendung lädt <code>main.js</code> als einziges <code>&lt;script type="module"&gt;</code>
+    in <code>index.html</code>. Alle anderen Dateien sind ES-Module, die per <code>import</code>
+    eingebunden werden — es findet kein Build-Schritt statt.</p>
+
+    <table class="field-table">
+      <thead>
+        <tr><th>Datei</th><th>Inhalt</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>config.js</code></td><td>Status-Konfiguration (<code>SC</code>, <code>S()</code>, <code>al()</code>), NagVis2-State-Mapping (<code>mapState()</code>) und Konstanten (<code>SCENE_MAX</code>, <code>FLOOR_STEP</code>, <code>BBOX_PAD</code>, <code>TUNNEL_MIN_DIST</code>, Akzentfarben).</td></tr>
+        <tr><td><code>data.js</code></td><td>Geo-Projektion (<code>computeGeoLayout()</code>), Etagen-Generator (<code>buildFloors()</code>), Formatierung (<code>fmtM()</code>) und <code>ModelManager</code> (Presets, User-Modelle, Datei-Fetch mit Cache).</td></tr>
+        <tr><td><code>scene.js</code></td><td>Klasse <code>NV2Map3D</code> — Three.js-Szene, Node-/Link-Rendering, Etagen-Navigation, Inspector, Suche, WebSocket-Client (<code>connectWS()</code> / <code>disconnectWS()</code>), Log.</td></tr>
+        <tr><td><code>panels.js</code></td><td><code>Minimap</code>, <code>ProblemList</code>, <code>ModelDialog</code>, <code>MapOverlay</code> (Leaflet/OSM), <code>FavoritesBar</code>.</td></tr>
+        <tr><td><code>dom-utils.js</code></td><td><code>escHtml()</code> — escaped Sonderzeichen für alle dynamischen Texte (Hostnamen, Plugin-Output, …), die per <code>innerHTML</code> eingefügt werden.</td></tr>
+        <tr><td><code>main.js</code></td><td>Boot-Sequenz: erstellt <code>window.app</code> (<code>NV2Map3D</code>) und die Panels, stellt Theme/WS-Einstellungen aus <code>localStorage</code> wieder her, definiert <code>window.connectNv3d()</code> / <code>window.disconnectNv3d()</code>.</td></tr>
+      </tbody>
+    </table>
+  </section>
 
   <!-- ══════════════════════════════════════════════════════════ -->
   <section id="nodetypes">
@@ -410,9 +445,10 @@
   <section id="models">
     <h2>4 · Modell-Konfiguration</h2>
 
-    <p>Modelle werden in <code>MODEL_PRESETS[]</code> in <code>app.js</code> definiert
-    oder über <a href="#data">models.json</a> nachgeladen. Node-/Link-Daten liegen in
-    externen JSON-Dateien und werden per <code>dataUrl</code> referenziert.</p>
+    <p>Modelle werden in <code>MODEL_PRESETS[]</code> in <code>data.js</code> definiert,
+    zur Laufzeit per <code>ModelManager.add()</code> (UI: Modell-Dialog) ergänzt — diese landen
+    in <code>localStorage</code> — oder über <a href="#data">models.json</a> nachgeladen.
+    Node-/Link-Daten liegen in externen JSON-Dateien und werden per <code>dataUrl</code> referenziert.</p>
 
     <h3>Gebäudemodell-Felder (<code>type: 'building'</code>)</h3>
     <table class="field-table">
@@ -589,7 +625,8 @@
 }</pre>
 
     <h3>Eigenes Modell-Preset (externe Datei)</h3>
-    <pre><span class="c">// In MODEL_PRESETS[] in app.js eintragen:</span>
+    <pre><span class="c">// In MODEL_PRESETS[] in data.js eintragen (oder via ModelManager.add()
+// zur Laufzeit hinzufügen – landet dann in localStorage):</span>
 {
   <span class="n">id</span>:          <span class="s">'werk-nord'</span>,
   <span class="n">name</span>:        <span class="s">'Werk Nord'</span>,
@@ -613,29 +650,61 @@
     <h2>7 · WebSocket-Statusupdates</h2>
 
     <p>
-      Die Karte kann Live-Statusupdates über WebSocket empfangen. Verbindung herstellen mit:
+      Die Karte kann Live-Statusupdates von einem NagVis2-kompatiblen Backend über WebSocket
+      empfangen. Verbindung herstellen (z.B. über die Browser-Konsole oder den WS-Dialog
+      <code>?</code>-Button im HUD):
     </p>
-    <pre><span class="c">// In app.js – Zeile am Ende der Datei auskommentieren:</span>
-app.connectWS(<span class="s">'ws://nagios-server:8008/ws/map/my-map'</span>);</pre>
+    <pre><span class="c">// Persistiert URL/Token in localStorage und verbindet sofort:</span>
+connectNv3d(<span class="s">'ws://nagios-server:8008/ws/map/my-map'</span>, <span class="s">'optionales-jwt-token'</span>);
 
-    <p>Erwartetes Nachrichtenformat (JSON):</p>
+<span class="c">// Verbindung trennen + Einstellungen aus localStorage entfernen:</span>
+disconnectNv3d();</pre>
+    <p>Beim nächsten Seitenaufruf wird eine zuvor über <code>connectNv3d()</code> gespeicherte
+    Verbindung automatisch wiederhergestellt (<code>main.js</code> → <code>_initWsFromStorage()</code>).
+    Reconnect bei Verbindungsabbruch erfolgt automatisch mit exponentiellem Backoff (2 s → 30 s).</p>
+
+    <p>Unterstützte Nachrichten-Events (Feld <code>event</code>, älter: <code>type</code>):</p>
+    <table class="field-table">
+      <thead>
+        <tr><th>Event</th><th>Bedeutung</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>snapshot</code></td><td>Vollständiger Status aller Hosts/Services beim Verbindungsaufbau.</td></tr>
+        <tr><td><code>status_update</code></td><td>Inkrementelles Update – nur geänderte Hosts/Services.</td></tr>
+        <tr><td><code>heartbeat</code></td><td>Keepalive, enthält <code>ts</code> (Unix-Timestamp); aktualisiert keine Nodes.</td></tr>
+        <tr><td><code>backend_error</code></td><td>Backend-seitiger Fehler (<code>message</code>); setzt den Verbindungs-Indikator auf „Fehler".</td></tr>
+      </tbody>
+    </table>
+
+    <p>Beispiel <code>snapshot</code> / <code>status_update</code>:</p>
     <pre>{
-  <span class="n">"type"</span>:  <span class="s">"status_update"</span>,
+  <span class="n">"event"</span>:  <span class="s">"status_update"</span>,
+  <span class="n">"ts"</span>:     <span class="v">1750000000</span>,
   <span class="n">"hosts"</span>: [
-    { <span class="n">"id"</span>: <span class="s">"core-sw-s1"</span>, <span class="n">"status"</span>: <span class="s">"ok"</span>       },
-    { <span class="n">"id"</span>: <span class="s">"web-01"</span>,     <span class="n">"status"</span>: <span class="s">"critical"</span> },
-    { <span class="n">"id"</span>: <span class="s">"fw-01"</span>,      <span class="n">"status"</span>: <span class="s">"down"</span>     }
+    { <span class="n">"id"</span>: <span class="s">"core-sw-s1"</span>, <span class="n">"state_label"</span>: <span class="s">"UP"</span>,
+      <span class="n">"output"</span>: <span class="s">"PING OK - Packet loss = 0%"</span>,
+      <span class="n">"acknowledged"</span>: <span class="k">false</span>, <span class="n">"in_downtime"</span>: <span class="k">false</span> },
+    { <span class="n">"id"</span>: <span class="s">"web-01"</span>, <span class="n">"state_label"</span>: <span class="s">"CRITICAL"</span>,
+      <span class="n">"output"</span>: <span class="s">"HTTP CRITICAL - 503"</span>,
+      <span class="n">"services_ok"</span>: <span class="v">8</span>, <span class="n">"services_warn"</span>: <span class="v">1</span>, <span class="n">"services_crit"</span>: <span class="v">2</span> }
+  ],
+  <span class="n">"services"</span>: [
+    { <span class="n">"host_name"</span>: <span class="s">"web-01"</span>, <span class="n">"state_label"</span>: <span class="s">"CRITICAL"</span> }
   ]
 }</pre>
 
     <div class="warn-box">
-      <strong>Hinweis:</strong> Das Feld <code>id</code> im WebSocket-Update muss exakt der
-      <code>id</code> des entsprechenden Nodes im geladenen Datensatz entsprechen.
-      Unbekannte IDs werden stillschweigend ignoriert.
+      <strong>Hinweis:</strong> <code>hosts[].id</code> (Fallback: <code>name</code>) muss exakt der
+      <code>id</code> bzw. dem <code>label</code> des entsprechenden Nodes im geladenen Datensatz
+      entsprechen. Unbekannte IDs werden stillschweigend ignoriert.
+      <code>state_label</code> akzeptiert NagVis2/Livestatus-Werte (<code>UP</code>, <code>DOWN</code>,
+      <code>UNREACHABLE</code>, <code>WARNING</code>, <code>CRITICAL</code>, <code>UNKNOWN</code>,
+      <code>PENDING</code>) oder direkt einen internen Status (<code>ok</code>, <code>warning</code>, …).
     </div>
 
     <p>Bei einem Statuswechsel auf <code>critical</code> oder <code>down</code> werden automatisch
-    Pulsringe um den betroffenen Node gespawnt.</p>
+    Pulsringe um den betroffenen Node gespawnt. <code>output</code>-Text wird im Inspector als
+    reiner Text dargestellt (HTML-Sonderzeichen werden escaped).</p>
   </section>
 
   <!-- ══════════════════════════════════════════════════════════ -->
@@ -643,13 +712,18 @@ app.connectWS(<span class="s">'ws://nagios-server:8008/ws/map/my-map'</span>);</
     <h2>8 · Externe Datendateien &amp; Registry</h2>
 
     <p>Alle Node-/Link-Daten liegen als separate JSON-Dateien im Ordner <code>data/</code>.
-    Das ermöglicht beliebig viele Standorte ohne <code>app.js</code> anzufassen.</p>
+    Das ermöglicht beliebig viele Standorte ohne die Modul-Dateien anzufassen.</p>
 
     <h3>Dateistruktur</h3>
-    <pre>v3/
-├── app.js
+    <pre>src/
+├── main.js               <span class="c">← einziger &lt;script type="module"&gt;-Einstieg</span>
+├── config.js
+├── data.js                <span class="c">← MODEL_PRESETS[], ModelManager</span>
+├── scene.js                <span class="c">← NV2Map3D</span>
+├── panels.js
+├── dom-utils.js
 ├── index.html
-├── models.json          <span class="c">← optionale externe Registry</span>
+├── models.json            <span class="c">← optionale externe Registry</span>
 └── data/
     ├── building.json
     ├── dc1.json
@@ -665,7 +739,7 @@ app.connectWS(<span class="s">'ws://nagios-server:8008/ws/map/my-map'</span>);</
     <h3>Modell-Registry (<code>models.json</code>)</h3>
     <p>Optionale externe Liste aller Modelle. Wird über
     <code>ModelManager.loadRegistry('models.json')</code> geladen (im Boot-Abschnitt
-    von <code>app.js</code> auskommentiert). Format: Array von Modell-Preset-Objekten
+    von <code>main.js</code> standardmäßig auskommentiert). Format: Array von Modell-Preset-Objekten
     mit <code>dataUrl</code> statt inline-<code>data</code>.</p>
     <pre>[
   {
