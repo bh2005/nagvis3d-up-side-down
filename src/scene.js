@@ -5,6 +5,7 @@ import { CSS2DRenderer,
 
 import { SC, S, al, mapState, SCENE_MAX, FLOOR_STEP, TUNNEL_MIN_DIST } from './config.js';
 import { fmtM, computeGeoLayout, buildFloors, ModelManager } from './data.js';
+import { escHtml } from './dom-utils.js';
 
 // ─────────────────────────────────────────────────────────────
 //  CSS2D CLEANUP
@@ -385,7 +386,7 @@ export class NV2Map3D {
       div.className = 'node-label floor-label';
       const [r,g,b_] = fc.accent;
       div.style.cssText = `color:rgba(${r},${g},${b_},.7);border-color:rgba(${r},${g},${b_},.2)`;
-      div.innerHTML = `<b>${fc.label}</b>` +
+      div.innerHTML = `<b>${escHtml(fc.label)}</b>` +
         (fc.widthM ? `<br><span style="opacity:.5;font-size:8px">${fmtM(fc.widthM)} × ${fmtM(fc.lengthM)}</span>` : '');
 
       const lbl = new CSS2DObject(div);
@@ -545,7 +546,7 @@ export class NV2Map3D {
             pill.title = nodes.map(n => n.label).join(', ');
             pill.innerHTML =
               `<span class="fnp-dot" style="background:${rHex};box-shadow:0 0 4px ${rHex}88"></span>` +
-              `<span class="fnp-name">${rackName}</span>` +
+              `<span class="fnp-name">${escHtml(rackName)}</span>` +
               `<span class="fnp-type">${nodes.length}</span>`;
             pill.onclick = () => {
               this._setAutoOrbit(false);
@@ -608,7 +609,7 @@ export class NV2Map3D {
       btn.className = 'floor-btn';
       btn.title = fc.sub + (fc.widthM ? ` · ${fmtM(fc.widthM)} × ${fmtM(fc.lengthM)}` : '');
       btn.innerHTML =
-        `<span class="fb-label">${fc.label}</span>` +
+        `<span class="fb-label">${escHtml(fc.label)}</span>` +
         (fc.widthM ? `<span class="fb-dim">${fmtM(fc.widthM)} × ${fmtM(fc.lengthM)}</span>` : '') +
         `<span class="fb-dot" style="background:rgba(${r},${g},${b_},.7);box-shadow:0 0 5px rgba(${r},${g},${b_},.5)"></span>`;
       btn.onclick = () => this.flyToFloor(fc.y);
@@ -646,7 +647,7 @@ export class NV2Map3D {
           pill.title = nodes.map(n => n.label).join(', ');
           pill.innerHTML =
             `<span class="fnp-dot" style="background:${roomHex};box-shadow:0 0 4px ${roomHex}88"></span>` +
-            `<span class="fnp-name">${roomName}</span>` +
+            `<span class="fnp-name">${escHtml(roomName)}</span>` +
             `<span class="fnp-type">${nodes.length}</span>`;
           pill.onclick = () => {
             this._setAutoOrbit(false);
@@ -1494,17 +1495,17 @@ export class NV2Map3D {
     const ackBadge  = ud.acknowledged ? '<span class="ins-tag ins-tag-ack">ACK</span>' : '';
     const dtBadge   = ud.in_downtime  ? '<span class="ins-tag ins-tag-dt">DT</span>'  : '';
     const outputRow = ud.output
-      ? `<div class="m-row m-row-output"><span>Output</span><b>${ud.output}</b></div>` : '';
+      ? `<div class="m-row m-row-output"><span>Output</span><b>${escHtml(ud.output)}</b></div>` : '';
     const svcRow = (ud.svc_warn != null || ud.svc_crit != null)
       ? `<div class="m-row"><span>Services</span><b>${ud.svc_ok ?? 0} OK / ${ud.svc_warn ?? 0} WARN / ${ud.svc_crit ?? 0} CRIT</b></div>` : '';
     const backendRow = ud.backend_id
-      ? `<div class="m-row"><span>Backend</span><b>${ud.backend_id}</b></div>` : '';
+      ? `<div class="m-row"><span>Backend</span><b>${escHtml(ud.backend_id)}</b></div>` : '';
     document.getElementById('ins-body').innerHTML = `
       <div class="m-row"><span>Status</span><b class="${cfg.cls}">${cfg.label}</b>${ackBadge}${dtBadge}</div>
       ${outputRow}
       ${svcRow}
-      <div class="m-row"><span>Typ</span><b>${data.type}</b></div>
-      <div class="m-row"><span>Ebene</span><b>${data.floor ?? '–'}</b></div>
+      <div class="m-row"><span>Typ</span><b>${escHtml(data.type)}</b></div>
+      <div class="m-row"><span>Ebene</span><b>${escHtml(data.floor ?? '–')}</b></div>
       ${geoLine}
       ${dbmLine}
       ${pos ? `<div class="m-row"><span>Scene X/Y/Z</span><b>${pos.x.toFixed(1)} / ${pos.y.toFixed(1)} / ${pos.z.toFixed(1)}</b></div>` : ''}
@@ -1598,7 +1599,7 @@ export class NV2Map3D {
     const c = document.getElementById('log-entries');
     const d = document.createElement('div');
     const t = new Date().toLocaleTimeString('de-DE', { hour12:false });
-    d.innerHTML = `<span class="ts">[${t}]</span> ${msg}`;
+    d.innerHTML = `<span class="ts">[${t}]</span> ${escHtml(msg)}`;
     c.prepend(d);
     while (c.children.length > 10) c.removeChild(c.lastChild);
   }

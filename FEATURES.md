@@ -65,7 +65,7 @@
 - **userData-Speicherung** – `acknowledged`, `in_downtime`, `output`, `svc_ok/warn/crit`, `backend_id` je Node-Gruppe für Inspector-Anzeige
 - **Exponentieller Backoff** – 2 s → 4 s → 8 s … max. 30 s; setzt sich bei erfolgreicher Verbindung zurück
 - **Auth-Token** – optionaler Bearer-Token im WS-Handshake-Header
-- **`disconnectWS()`** – sauberes Trennen; unterdrückt Reconnect-Versuche
+- **`window.disconnectNv3d()`** – sauberes Trennen; unterdrückt Reconnect-Versuche
 
 ### WS-Verbindungs-Dialog
 

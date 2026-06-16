@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SC, S, al } from './config.js';
 import { fmtM, ModelManager } from './data.js';
+import { escHtml } from './dom-utils.js';
 
 //  MINIMAP
 // ─────────────────────────────────────────────────────────────
@@ -337,8 +338,8 @@ export class FavoritesBar {
       row.className  = 'fav-row';
       row.dataset.id = fav.id;
       row.innerHTML  = `
-        <img src="${fav.thumb}" class="fav-row-thumb" alt="" title="Ansicht laden">
-        <input class="fav-row-label" value="${fav.label.replace(/"/g, '&quot;')}"
+        <img src="${escHtml(fav.thumb)}" class="fav-row-thumb" alt="" title="Ansicht laden">
+        <input class="fav-row-label" value="${escHtml(fav.label)}"
                spellcheck="false" title="Klicken zum Umbenennen">
         <label class="fav-slide-wrap" title="In Slideshow einschließen">
           <input type="checkbox" class="fav-slide-check" ${fav.inSlideshow ? 'checked' : ''}>
@@ -422,8 +423,8 @@ export class ProblemList {
       row.innerHTML = `
         <span class="s-badge ${cfg.badge}" style="flex-shrink:0">${cfg.label}</span>
         <div class="prob-info">
-          <span class="prob-name">${n.label}</span>
-          <span class="prob-floor">${n.floor ?? n.type}</span>
+          <span class="prob-name">${escHtml(n.label)}</span>
+          <span class="prob-floor">${escHtml(n.floor ?? n.type)}</span>
         </div>
         <span class="prob-arrow">›</span>
       `;
@@ -475,7 +476,7 @@ export class ModelDialog {
       row.innerHTML = `
         <div class="model-info">
           <div class="model-row-top">
-            <span class="model-name">${m.name}</span>
+            <span class="model-name">${escHtml(m.name)}</span>
             <span class="model-type-tag ${m.type}">${typeLabel}</span>
             ${isGeo ? `<span class="model-var-tag">⊕ Geo</span>` : ''}
           </div>
@@ -664,7 +665,7 @@ export class MapOverlay {
       });
 
       marker.bindTooltip(
-        `<strong>${cfg.name}</strong><br><span>${TYPE_LABEL[cfg.type] ?? cfg.type}</span>`,
+        `<strong>${escHtml(cfg.name)}</strong><br><span>${escHtml(TYPE_LABEL[cfg.type] ?? cfg.type)}</span>`,
         { className: 'map-tooltip', direction: 'top', offset: [0, -12], sticky: false }
       );
 
